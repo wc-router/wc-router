@@ -1,0 +1,17 @@
+{
+  "name": "wc-router",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces",
+    "test": "npm run test --workspaces",
+    "dev": "npm run dev --workspace=@wc-router/core"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.2"
+  }
+}
