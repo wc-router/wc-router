@@ -1,5 +1,9 @@
-import { parse } from "../parse";
-import { WcOutlet } from "./WcOutlet";
+import { matchRoutes } from "../matchRoutes.js";
+import { parse } from "../parse.js";
+import { WcOutlet } from "./WcOutlet.js";
+import { WcRoute } from "./WcRoute.js";
+import { config } from "../config.js";
+import { raiseError } from "../raiseError.js";
 
 /**
  * AppRoutes - Root component for wc-router
@@ -9,15 +13,16 @@ import { WcOutlet } from "./WcOutlet";
 export class WcRoutes extends HTMLElement {
   private _outlet: WcOutlet | null = null;
   private _template: HTMLTemplateElement | null = null;
+  private _routeChildNodes: WcRoute[] = [];
   constructor() {
     super();
     console.log(this.rootElement.querySelectorAll("*"));
   }
 
   private _getOutlet(): WcOutlet {
-    let outlet = document.querySelector("wc-outlet") as WcOutlet;
+    let outlet = document.querySelector(config.tagNames.outlet) as WcOutlet;
     if (!outlet) {
-      outlet = document.createElement("wc-outlet") as WcOutlet;
+      outlet = document.createElement(config.tagNames.outlet) as WcOutlet;
       document.body.appendChild(outlet);
     }
     return outlet;
@@ -28,20 +33,60 @@ export class WcRoutes extends HTMLElement {
     return template;
   }
   
-  connectedCallback() {
-    // TODO: Initialize router
-    this._outlet = this._getOutlet();
-    this._outlet.routes = this;
-    this._template = this._getTemplate();
+  get outlet(): WcOutlet {
+    if (!this._outlet) {
+      raiseError('WcRoutes has no outlet.');
+    }
+    return this._outlet;
+  }
+
+  get template(): HTMLTemplateElement {
     if (!this._template) {
-      console.warn('WcRoutes should have a <template> child element.');
+      raiseError('WcRoutes has no template.');
+    }
+    return this._template;
+  }
+
+  get routeChildNodes(): WcRoute[] {
+    return this._routeChildNodes;
+  }
+
+  private _onNavigateFunc(navEvent: any) {
+    if (
+      !navEvent.canIntercept ||
+      navEvent.hashChange ||
+      navEvent.downloadRequest !== null
+    ) {
       return;
     }
-    parse(this._template.content);
+    const routesNode = this;
+    navEvent.intercept({
+      async handler() {
+        const url = new URL(navEvent.destination.url);
+        const routes = matchRoutes(routesNode, url.pathname);
+        routesNode.outlet.showRouteContent(routes);
+      }
+    });
+  }
+
+  private _onNavigate = this._onNavigateFunc.bind(this);
+
+  async connectedCallback() {
+    this._outlet = this._getOutlet();
+    this._outlet.routesNode = this;
+    this._template = this._getTemplate();
+    if (!this._template) {
+      raiseError('WcRoutes should have a <template> child element.');
+    }
+    const fragment = await parse(this);
+    this._outlet.rootNode.appendChild(fragment);
+    const routes = matchRoutes(this, "/");
+    this._outlet.showRouteContent(routes);
+    ((window as any).navigation as any)?.addEventListener("navigate", this._onNavigate);
   }
 
   disconnectedCallback() {
-    // TODO: Cleanup
+    ((window as any).navigation as any)?.removeEventListener("navigate", this._onNavigate);
   }
 
   get rootElement(): ShadowRoot | HTMLElement {
@@ -50,6 +95,6 @@ export class WcRoutes extends HTMLElement {
 }
 
 // Register custom element
-if (!customElements.get('wc-routes')) {
-  customElements.define('wc-routes', WcRoutes);
+if (!customElements.get(config.tagNames.routes)) {
+  customElements.define(config.tagNames.routes, WcRoutes);
 }
