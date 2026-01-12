@@ -80,6 +80,7 @@ export class WcLayoutOutlet extends HTMLElement {
 
   async connectedCallback() {
     await this.initialize();
+//    console.log('WcLayoutOutlet connectedCallback');
   }
 
   get rootNode(): HTMLElement | ShadowRoot {

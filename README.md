@@ -13,56 +13,87 @@ Web Components専用の宣言的ルーティングライブラリ
 
 ### ルート定義
 
-`<app-routes>` 内に `<app-route>` をネストしてルーティングを定義します。
+`<wc-routes>` 内に `<wc-route>` をネストしてルーティングを定義します。
 子ルートのパスは親パスを自動継承します（相対パス方式）。
 
 ```html
-<app-routes>
-  <app-route path="/">
-    <app-layout>
-      <app-header slot="header"></app-header>
-      <app-sidebar slot="sidebar"></app-sidebar>
+<wc-routes>
+  <template>
+    <wc-route path="/">
+      <wc-layout layout="main-layout">
+        <wc-header slot="header"></wc-header>
+        <wc-sidebar slot="sidebar"></wc-sidebar>
 
-      <app-route index>
-        <app-main></app-main>
-      </app-route>
+        <wc-route path="">
+          <wc-main></wc-main>
+        </wc-route>
 
-      <app-route path="dashboard">
-        <dashboard-main></dashboard-main>
-      </app-route>
-    </app-layout>
-  </app-route>
+        <wc-route path="dashboard">
+          <dashboard-main></dashboard-main>
+        </wc-route>
+      </wc-layout>
+    </wc-route>
 
-  <app-route path="/admin" lazy>
-    <admin-layout>
-      <admin-header slot="header"></admin-header>
-      <admin-sidebar slot="sidebar"></admin-sidebar>
+    <wc-route path="/admin">
+      <wc-layout src="admin-layout.html">
+        <admin-header slot="header"></admin-header>
+        <admin-sidebar slot="sidebar"></admin-sidebar>
 
-      <app-route index>
-        <admin-main></admin-main>
-      </app-route>
+        <wc-route path="">
+          <admin-main></admin-main>
+        </wc-route>
 
-      <app-route path="users">
-        <admin-users></admin-users>
-      </app-route>
+        <wc-route path="users">
+          <admin-users></admin-users>
+        </wc-route>
 
-      <app-route path="users/:id">
-        <admin-user data-bind="props"></admin-user>
-      </app-route>
-    </admin-layout>
-  </app-route>
-</app-routes>
+        <wc-route path="users/:id">
+          <admin-user data-bind="props"></admin-user>
+        </wc-route>
+      </wc-layout>
+    </wc-route>
+  </template>
+</wc-routes>
+
+<template id="main-layout">
+  <section>
+    <slot name="sidebar"></slot>
+    <section>
+      <slot name="header"></slot>
+      <slot></slot>
+    <section>
+  </section>
+</template>
+```
+
+```html:admin-latout.html
+<h1>admin page</h1>
+<section>
+  <slot name="sidebar"></slot>
+  <section>
+    <h1>admin page</h1>
+    <slot name="header"></slot>
+    <slot></slot>
+  <section>
+</section>
 ```
 
 ### 属性
 
-#### `<app-route>`
+#### `<wc-route>`
 
 | 属性 | 説明 |
 |------|------|
-| `path` | URLパス。親のパスを自動継承。`:param` でパラメータを定義 |
-| `index` | インデックスルート（親パスと完全一致時に表示） |
-| `lazy` | 遅延ロード。このルートにアクセスするまでコンポーネントを初期化しない |
+| `path` | URLパス。親のパスを自動継承。`:param` でパラメータを定義、''で上位のパスを継承 |
+
+#### `<wc-layout>`
+
+| 属性 | 説明 |
+|------|------|
+| `layout` | HTML内のtemplateタグのID |
+| `src` | 外部テンプレートHTMLのURL |
+| `enable-shadow-root` | ShadowDOM有効 |
+| `disable-shadow-root` | ShadowDOM無効 |
 
 #### `data-bind`
 
@@ -82,16 +113,14 @@ URLパラメータをコンポーネントに渡す方法を指定します。
 
 ### レイアウト定義
 
-レイアウトコンポーネントは `<slot>` を使用してコンテンツを配置します。
+レイアウトコンポーネントのテンプレートは `<slot>` を使用してコンテンツを配置します。
 
 ```html
-<app-layout>
-  <template shadowrootmode="open">
-    <section><slot name="header"></slot></section>
-    <section><slot name="sidebar"></slot></section>
-    <section><slot></slot></section>
-  </template>
-</app-layout>
+<template id="main-layout">
+  <section><slot name="header"></slot></section>
+  <section><slot name="sidebar"></slot></section>
+  <section><slot></slot></section>
+</template>
 ```
 
 ## URL構造の例
@@ -100,8 +129,8 @@ URLパラメータをコンポーネントに渡す方法を指定します。
 
 | URL | 表示コンポーネント |
 |-----|-------------------|
-| `/` | `<app-layout>` + `<app-main>` |
-| `/dashboard` | `<app-layout>` + `<dashboard-main>` |
+| `/` | `<wc-layout>` + `<wc-main>` |
+| `/dashboard` | `<wc-layout>` + `<dashboard-main>` |
 | `/admin` | `<admin-layout>` + `<admin-main>` |
 | `/admin/users` | `<admin-layout>` + `<admin-users>` |
 | `/admin/users/123` | `<admin-layout>` + `<admin-user>` (props.id = "123") |

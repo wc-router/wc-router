@@ -34,18 +34,25 @@ export class WcOutlet extends HTMLElement {
         route.hide();
       }
     }
+    const lastRouteSet = new Set<WcRoute>(this._lastRoutes);
     for (const route of routes) {
       const parentNode = route.placeHolder.parentNode;
       const nextSibling = route.placeHolder.nextSibling;
-      for (const node of route.childNodeArray) {
-        if (nextSibling) {
-          parentNode?.insertBefore(node, nextSibling);
-        } else {
-          parentNode?.appendChild(node);
+      if (!lastRouteSet.has(route)) {
+        for (const node of route.childNodeArray) {
+          if (nextSibling) {
+            parentNode?.insertBefore(node, nextSibling);
+          } else {
+            parentNode?.appendChild(node);
+          }
         }
       }
     }
     this._lastRoutes = [ ...routes ];
+  }
+
+  connectedCallback() {
+//    console.log('WcOutlet connectedCallback');
   }
 }
 
