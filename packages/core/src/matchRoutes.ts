@@ -1,10 +1,12 @@
+import { IRouteMatchResult } from "./components/types.js";
 import { WcRoute } from "./components/WcRoute.js";
 import { WcRoutes } from "./components/WcRoutes.js";
 
-function _matchRoutes(routesNode: WcRoutes, routeNode: WcRoute, routes: WcRoute[], path: string): WcRoute[] | null {
+function _matchRoutes(routesNode: WcRoutes, routeNode: WcRoute, routes: WcRoute[], path: string): IRouteMatchResult | null {
   const nextRoutes = routes.concat(routeNode);
-  if (routeNode.testPath(path)) {
-    return nextRoutes;
+  const matchResult = routeNode.testPath(path);
+  if (matchResult) {
+    return matchResult;
   }
   if (routeNode.routeChildNodes.length === 0) {
     return null;
@@ -18,7 +20,7 @@ function _matchRoutes(routesNode: WcRoutes, routeNode: WcRoute, routes: WcRoute[
   return null;
 }
 
-export function matchRoutes(routesNode: WcRoutes, path: string): WcRoute[] {
+export function matchRoutes(routesNode: WcRoutes, path: string): IRouteMatchResult | null {
   const routes: WcRoute[] = [];
   const topLevelRoutes = routesNode.routeChildNodes;
   for (const route of topLevelRoutes) {
@@ -27,5 +29,5 @@ export function matchRoutes(routesNode: WcRoutes, path: string): WcRoute[] {
       return matchedRoutes;
     }
   }
-  return [];
+  return null;
 }

@@ -26,7 +26,7 @@ export class WcOutlet extends HTMLElement {
     return this;
   }
 
-  showRouteContent(routes: WcRoute[]) {
+  showRouteContent(routes: WcRoute[], params: Record<string, string>): void {
     // Hide previous routes
     const routesSet = new Set<WcRoute>(routes);
     for (const route of this._lastRoutes) {
@@ -36,16 +36,8 @@ export class WcOutlet extends HTMLElement {
     }
     const lastRouteSet = new Set<WcRoute>(this._lastRoutes);
     for (const route of routes) {
-      const parentNode = route.placeHolder.parentNode;
-      const nextSibling = route.placeHolder.nextSibling;
       if (!lastRouteSet.has(route)) {
-        for (const node of route.childNodeArray) {
-          if (nextSibling) {
-            parentNode?.insertBefore(node, nextSibling);
-          } else {
-            parentNode?.appendChild(node);
-          }
-        }
+        route.show(params);
       }
     }
     this._lastRoutes = [ ...routes ];
@@ -54,9 +46,4 @@ export class WcOutlet extends HTMLElement {
   connectedCallback() {
 //    console.log('WcOutlet connectedCallback');
   }
-}
-
-// Register custom element
-if (!customElements.get(config.tagNames.outlet)) {
-  customElements.define(config.tagNames.outlet, WcOutlet);
 }

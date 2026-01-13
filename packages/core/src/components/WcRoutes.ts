@@ -35,20 +35,28 @@ export class WcRoutes extends HTMLElement {
   
   get outlet(): WcOutlet {
     if (!this._outlet) {
-      raiseError('WcRoutes has no outlet.');
+      raiseError(`${config.tagNames.routes} has no outlet.`);
     }
     return this._outlet;
   }
 
   get template(): HTMLTemplateElement {
     if (!this._template) {
-      raiseError('WcRoutes has no template.');
+      raiseError(`${config.tagNames.routes} has no template.`);
     }
     return this._template;
   }
 
   get routeChildNodes(): WcRoute[] {
     return this._routeChildNodes;
+  }
+
+  navigate(path: string): void {
+    const matchResult = matchRoutes(this, path);
+    if (!matchResult) {
+      raiseError(`${config.tagNames.routes} No route matched for path: ${path}`);
+    }
+    this.outlet.showRouteContent(matchResult.routes, matchResult.params);
   }
 
   private _onNavigateFunc(navEvent: any) {
@@ -63,8 +71,7 @@ export class WcRoutes extends HTMLElement {
     navEvent.intercept({
       async handler() {
         const url = new URL(navEvent.destination.url);
-        const routes = matchRoutes(routesNode, url.pathname);
-        routesNode.outlet.showRouteContent(routes);
+        routesNode.navigate(url.pathname);
       }
     });
   }
@@ -76,12 +83,11 @@ export class WcRoutes extends HTMLElement {
     this._outlet.routesNode = this;
     this._template = this._getTemplate();
     if (!this._template) {
-      raiseError('WcRoutes should have a <template> child element.');
+      raiseError(`${config.tagNames.routes} should have a <template> child element.`);
     }
     const fragment = await parse(this);
     this._outlet.rootNode.appendChild(fragment);
-    const routes = matchRoutes(this, "/");
-    this._outlet.showRouteContent(routes);
+    this.navigate("/");
     ((window as any).navigation as any)?.addEventListener("navigate", this._onNavigate);
   }
 
@@ -92,9 +98,4 @@ export class WcRoutes extends HTMLElement {
   get rootElement(): ShadowRoot | HTMLElement {
     return this.shadowRoot ?? this;
   }  
-}
-
-// Register custom element
-if (!customElements.get(config.tagNames.routes)) {
-  customElements.define(config.tagNames.routes, WcRoutes);
 }

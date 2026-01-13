@@ -12,12 +12,13 @@ export class WcLayoutOutlet extends HTMLElement {
 
   get layout(): WcLayout {
     if (!this._layout) {
-      raiseError('WcLayoutOutlet has no layout.');
+      raiseError(`${config.tagNames.layoutOutlet} has no layout.`);
     }
     return this._layout;
   }
   set layout(value: WcLayout) {
     this._layout = value;
+    this.setAttribute('name', value.name);
   }
   
   async initialize(): Promise<void> {
@@ -43,7 +44,7 @@ export class WcLayoutOutlet extends HTMLElement {
         if (!slotElementBySlotName.has(slotName)) {
           slotElementBySlotName.set(slotName, slotElement);
         } else {
-          console.warn(`Duplicate slot name "${slotName}" in layout template.`);
+          console.warn(`${config.tagNames.layoutOutlet} duplicate slot name "${slotName}" in layout template.`);
         }
       });
 
@@ -80,7 +81,7 @@ export class WcLayoutOutlet extends HTMLElement {
 
   async connectedCallback() {
     await this.initialize();
-//    console.log('WcLayoutOutlet connectedCallback');
+//    console.log(`${config.tagNames.layoutOutlet} connectedCallback`);
   }
 
   get rootNode(): HTMLElement | ShadowRoot {
@@ -89,9 +90,4 @@ export class WcLayoutOutlet extends HTMLElement {
     }
     return this;
   }
-}
-
-// Register custom element
-if (!customElements.get(config.tagNames.layoutOutlet)) {
-  customElements.define(config.tagNames.layoutOutlet, WcLayoutOutlet);
 }

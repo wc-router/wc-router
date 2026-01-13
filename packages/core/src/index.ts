@@ -1,5 +1,5 @@
-export { WcRoute } from './components/WcRoute';
-export { WcLayout } from './components/WcLayout';
-export { WcOutlet } from './components/WcOutlet';
-export { WcRoutes } from './components/WcRoutes';
-export { WcLayoutOutlet } from './components/WcLayoutOutlet';
+
+export { config } from "./config";
+import { registerComponents } from "./registerComponents.js";
+
+registerComponents();

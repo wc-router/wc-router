@@ -94,6 +94,7 @@ Web Components専用の宣言的ルーティングライブラリ
 | `src` | 外部テンプレートHTMLのURL |
 | `enable-shadow-root` | ShadowDOM有効 |
 | `disable-shadow-root` | ShadowDOM無効 |
+| `name` | wc-layout-outletへ引き継ぐ名前 |
 
 #### `data-bind`
 

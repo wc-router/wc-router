@@ -8,9 +8,11 @@ export class WcLayout extends HTMLElement {
   private _template: HTMLTemplateElement;
   private _uuid: string = getUUID();
   private _placeHolder: Comment | null = null;
+  private _name: string = '';
   constructor() {
     super();
     this._template = document.createElement('template');
+    this._name = this.getAttribute('name') || '';
   }
 
   loadTemplateFromCache(source: string): string | undefined {
@@ -21,13 +23,13 @@ export class WcLayout extends HTMLElement {
     try {
       const response = await fetch(source);
       if (!response.ok) {
-        raiseError(`Failed to fetch layout from source: ${source}, status: ${response.status}`);
+        raiseError(`${config.tagNames.layout} failed to fetch layout from source: ${source}, status: ${response.status}`);
       }
       const templateContent = await response.text();
       cache.set(source, templateContent);
       return templateContent;
     } catch (error) {
-      raiseError(`Failed to load layout from source: ${source}, error: ${error}`);
+      raiseError(`${config.tagNames.layout} failed to load layout from source: ${source}, error: ${error}`);
     }
   }
 
@@ -45,7 +47,7 @@ export class WcLayout extends HTMLElement {
     const source = this.getAttribute('src');
     const layoutId = this.getAttribute('layout');
     if (source && layoutId) {
-      console.warn('WcLayout have both "src" and "layout" attributes.');
+      console.warn(`${config.tagNames.layout} have both "src" and "layout" attributes.`);
     }
     const template = document.createElement('template');
     if (source) {
@@ -60,7 +62,7 @@ export class WcLayout extends HTMLElement {
       if (templateContent) {
         template.innerHTML = templateContent;
       } else {
-        console.warn(`WcLayout could not find template with id "${layoutId}".`);
+        console.warn(`${config.tagNames.layout} could not find template with id "${layoutId}".`);
       }
     }
     return template;
@@ -86,9 +88,8 @@ export class WcLayout extends HTMLElement {
     }
     return config.enableShadowRoot;
   }
-}
 
-// Register custom element
-if (!customElements.get(config.tagNames.layout)) {
-  customElements.define(config.tagNames.layout, WcLayout);
+  get name(): string {
+    return this._name;
+  }
 }
