@@ -11,12 +11,28 @@ import { raiseError } from "../raiseError.js";
  * Container element that manages route definitions and navigation.
  */
 export class WcRoutes extends HTMLElement {
+  private static _instance: WcRoutes | null = null;
   private _outlet: WcOutlet | null = null;
   private _template: HTMLTemplateElement | null = null;
   private _routeChildNodes: WcRoute[] = [];
   constructor() {
     super();
+    if (WcRoutes._instance) {
+      raiseError(`${config.tagNames.routes} can only be instantiated once.`);
+    }
+    WcRoutes._instance = this;
     console.log(this.rootElement.querySelectorAll("*"));
+  }
+
+  static get instance(): WcRoutes {
+    if (!WcRoutes._instance) {
+      raiseError(`${config.tagNames.routes} has not been instantiated.`);
+    }
+    return WcRoutes._instance;
+  }
+
+  static navigate(path: string): void {
+    WcRoutes.instance.navigate(path);
   }
 
   private _getOutlet(): WcOutlet {
@@ -52,6 +68,15 @@ export class WcRoutes extends HTMLElement {
   }
 
   navigate(path: string): void {
+    if ((window as any).navigation) {
+      (window as any).navigation.navigate(path);
+    } else {
+      history.pushState(null, '', path);
+      this._applyRoute(path);
+    }
+  }
+
+  private _applyRoute(path: string): void {
     const matchResult = matchRoutes(this, path);
     if (!matchResult) {
       raiseError(`${config.tagNames.routes} No route matched for path: ${path}`);
@@ -71,7 +96,7 @@ export class WcRoutes extends HTMLElement {
     navEvent.intercept({
       async handler() {
         const url = new URL(navEvent.destination.url);
-        routesNode.navigate(url.pathname);
+        routesNode._applyRoute(url.pathname);
       }
     });
   }
@@ -87,7 +112,7 @@ export class WcRoutes extends HTMLElement {
     }
     const fragment = await parse(this);
     this._outlet.rootNode.appendChild(fragment);
-    this.navigate("/");
+    this._applyRoute(window.location.pathname);
     ((window as any).navigation as any)?.addEventListener("navigate", this._onNavigate);
   }
 

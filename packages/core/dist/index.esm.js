@@ -465,12 +465,26 @@ async function parse(routesNode) {
  * Container element that manages route definitions and navigation.
  */
 class WcRoutes extends HTMLElement {
+    static _instance = null;
     _outlet = null;
     _template = null;
     _routeChildNodes = [];
     constructor() {
         super();
+        if (WcRoutes._instance) {
+            raiseError(`${config.tagNames.routes} can only be instantiated once.`);
+        }
+        WcRoutes._instance = this;
         console.log(this.rootElement.querySelectorAll("*"));
+    }
+    static get instance() {
+        if (!WcRoutes._instance) {
+            raiseError(`${config.tagNames.routes} has not been instantiated.`);
+        }
+        return WcRoutes._instance;
+    }
+    static navigate(path) {
+        WcRoutes.instance.navigate(path);
     }
     _getOutlet() {
         let outlet = document.querySelector(config.tagNames.outlet);
@@ -500,6 +514,15 @@ class WcRoutes extends HTMLElement {
         return this._routeChildNodes;
     }
     navigate(path) {
+        if (window.navigation) {
+            window.navigation.navigate(path);
+        }
+        else {
+            history.pushState(null, '', path);
+            this._applyRoute(path);
+        }
+    }
+    _applyRoute(path) {
         const matchResult = matchRoutes(this, path);
         if (!matchResult) {
             raiseError(`${config.tagNames.routes} No route matched for path: ${path}`);
@@ -516,7 +539,7 @@ class WcRoutes extends HTMLElement {
         navEvent.intercept({
             async handler() {
                 const url = new URL(navEvent.destination.url);
-                routesNode.navigate(url.pathname);
+                routesNode._applyRoute(url.pathname);
             }
         });
     }
@@ -530,7 +553,7 @@ class WcRoutes extends HTMLElement {
         }
         const fragment = await parse(this);
         this._outlet.rootNode.appendChild(fragment);
-        this.navigate("/");
+        this._applyRoute(window.location.pathname);
         window.navigation?.addEventListener("navigate", this._onNavigate);
     }
     disconnectedCallback() {
