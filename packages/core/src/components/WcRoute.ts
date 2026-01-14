@@ -17,6 +17,9 @@ export class WcRoute extends HTMLElement {
   private _patternText: string = '';
   private _params: Record<string, string> = {};
   private _absolutePattern: RegExp | null = null;
+  private _weight: number = -1;
+  private _absoluteWeight: number = 0;
+  private _childIndex: number = 0;
   constructor() {
     super();
     if (this.hasAttribute('path')) {
@@ -34,8 +37,10 @@ export class WcRoute extends HTMLElement {
       if (segment.startsWith(':')) {
         this._paramNames.push(segment.substring(1));
         patternSegments.push('([^\\/]+)');
+        this._weight += 1;
       } else {
         patternSegments.push(segment);
+        this._weight += 2;
       }
     }
     this._patternText = patternSegments.join('\\/');
@@ -48,9 +53,11 @@ export class WcRoute extends HTMLElement {
     this._routeParentNode = value;
     if (value) {
       value.routeChildNodes.push(this);
+      this._childIndex = value.routeChildNodes.length - 1;
     } else {
       // Top-level route
-      this._routesNode?.routeChildNodes.push(this);
+      this.routesNode.routeChildNodes.push(this);
+      this._childIndex = this.routesNode.routeChildNodes.length - 1;
     }
   }
 
@@ -58,10 +65,13 @@ export class WcRoute extends HTMLElement {
     return this._routeChildNodes;
   }
 
-  get routesNode(): WcRoutes | null {
+  get routesNode(): WcRoutes {
+    if (!this._routesNode) {
+      raiseError(`${config.tagNames.route} has no routesNode.`);
+    }
     return this._routesNode;
   }
-  set routesNode(value: WcRoutes | null) {
+  set routesNode(value: WcRoutes) {
     this._routesNode = value;
   }
 
@@ -73,7 +83,10 @@ export class WcRoute extends HTMLElement {
     return !this._path.startsWith('/');
   }
 
-  get absolutePath(): string {
+  private _checkParentNode<T>(
+    hasParentCallback: (routeParentNode: WcRoute) => T, 
+    noParentCallback: () => T
+  ): T {
     if (this.isRelative && !this._routeParentNode) {
       raiseError(`${config.tagNames.route} is relative but has no parent route.`);
     }
@@ -81,12 +94,23 @@ export class WcRoute extends HTMLElement {
       raiseError(`${config.tagNames.route} is absolute but has a parent route.`);
     }
     if (this.isRelative && this._routeParentNode) {
-      const parentPath = this._routeParentNode.absolutePath;
-      return parentPath.endsWith('/')
-        ? parentPath + this._path
-        : parentPath + '/' + this._path;
+      return hasParentCallback(this._routeParentNode);
+    } else {
+      return noParentCallback();
     }
-    return this._path;
+  }
+
+  get absolutePath(): string {
+    return this._checkParentNode<string>((routeParentNode) => {
+        const parentPath = routeParentNode.absolutePath;
+        return parentPath.endsWith('/')
+          ? parentPath + this._path
+          : parentPath + '/' + this._path;
+
+      }, () => {
+        return this._path;
+      }
+    );
   }
 
   get uuid(): string {
@@ -145,39 +169,48 @@ export class WcRoute extends HTMLElement {
   }
 
   get absolutePatternText(): string {
-    if (this.isRelative && !this._routeParentNode) {
-      raiseError(`${config.tagNames.route} is relative but has no parent route.`);
-    }
-    if (!this.isRelative && this._routeParentNode) {
-      raiseError(`${config.tagNames.route} is absolute but has a parent route.`);
-    }
-    if (this.isRelative && this._routeParentNode) {
-      const parentPattern = this._routeParentNode.absolutePatternText;
+    return this._checkParentNode<string>((routeParentNode) => {
+      const parentPattern = routeParentNode.absolutePatternText;
       return parentPattern.endsWith('\\/')
         ? parentPattern + this._patternText
         : parentPattern + '\\/' + this._patternText;
-    }
-    return this._patternText;
-  }
-
-  get absoluteParamNames(): string[] {
-    if (this.isRelative && !this._routeParentNode) {
-      raiseError(`${config.tagNames.route} is relative but has no parent route.`);
-    }
-    if (!this.isRelative && this._routeParentNode) {
-      raiseError(`${config.tagNames.route} is absolute but has a parent route.`);
-    }
-    if (this.isRelative && this._routeParentNode) {
-      return [
-        ...this._routeParentNode.absoluteParamNames,
-        ...this._paramNames
-      ];
-    }
-    return [ ...this._paramNames ];
+    }, () => {
+      return this._patternText;
+    });
   }
 
   get params(): Record<string, string> {
     return this._params;
+  }
+
+  get absoluteParamNames(): string[] {
+    return this._checkParentNode<string[]>((routeParentNode) => {
+      return [
+        ...routeParentNode.absoluteParamNames,
+        ...this._paramNames
+      ];
+    }, () => {
+      return [ ...this._paramNames ];
+    });
+  }
+
+  get weight(): number {
+    return this._weight;
+  }
+
+  get absoluteWeight(): number {
+    if (this._absoluteWeight >= 0) {
+      return this._absoluteWeight
+    }
+    return (this._absoluteWeight = this._checkParentNode<number>((routeParentNode) => {
+      return routeParentNode.absoluteWeight + this._weight;
+    }, () => {
+      return this._weight;
+    }));
+  }
+
+  get childIndex(): number {
+    return this._childIndex;
   }
 
   show(params: Record<string, string>) {

@@ -2,32 +2,43 @@ import { IRouteMatchResult } from "./components/types.js";
 import { WcRoute } from "./components/WcRoute.js";
 import { WcRoutes } from "./components/WcRoutes.js";
 
-function _matchRoutes(routesNode: WcRoutes, routeNode: WcRoute, routes: WcRoute[], path: string): IRouteMatchResult | null {
+function _matchRoutes(
+  routesNode: WcRoutes, 
+  routeNode: WcRoute, 
+  routes: WcRoute[], 
+  path: string,
+  results: IRouteMatchResult[]
+): void {
   const nextRoutes = routes.concat(routeNode);
   const matchResult = routeNode.testPath(path);
   if (matchResult) {
-    return matchResult;
-  }
-  if (routeNode.routeChildNodes.length === 0) {
-    return null;
+    results.push(matchResult);
+    return; // Stop searching deeper routes once a match is found
   }
   for(const childRoute of routeNode.routeChildNodes) {
-    const matchedRoutes = _matchRoutes(routesNode, childRoute, nextRoutes, path);
-    if (matchedRoutes) {
-      return matchedRoutes;
-    }
+    _matchRoutes(routesNode, childRoute, nextRoutes, path, results);
   }
-  return null;
 }
 
 export function matchRoutes(routesNode: WcRoutes, path: string): IRouteMatchResult | null {
   const routes: WcRoute[] = [];
   const topLevelRoutes = routesNode.routeChildNodes;
+  const results: IRouteMatchResult[] = [];
   for (const route of topLevelRoutes) {
-    const matchedRoutes = _matchRoutes(routesNode, route, routes, path);
-    if (matchedRoutes) {
-      return matchedRoutes;
+    _matchRoutes(routesNode, route, routes, path, results);
+  }
+  results.sort((a, b) => {
+    const lastRouteA = a.routes.at(-1)!;
+    const lastRouteB = b.routes.at(-1)!;
+    const diffWeight = lastRouteA.absoluteWeight - lastRouteB.absoluteWeight;
+    if (diffWeight !== 0) {
+      return -diffWeight;
     }
+    const diffIndex = lastRouteA.childIndex - lastRouteB.childIndex;
+    return diffIndex;
+  });
+  if (results.length > 0) {
+    return results[0];
   }
   return null;
 }
