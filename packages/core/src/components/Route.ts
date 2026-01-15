@@ -1,9 +1,9 @@
 import { getUUID } from "../getUUID.js";
 import { config } from "../config.js";
 import { raiseError } from "../raiseError.js";
-import { IRouteMatchResult, IRoute, IRouter, BindType } from "./types.js";
-
-const bindTypeSet: Set<BindType> = new Set([ "props", "states", "attr", "" ]);
+import { IRouteMatchResult, IRoute, IRouter, BindType, ILayoutOutlet } from "./types.js";
+import { assignParams } from "../assignParams.js";
+import { LayoutOutlet } from "./LayoutOutlet.js";
 
 export class Route extends HTMLElement implements IRoute {
   private _path: string = '';
@@ -214,40 +214,8 @@ export class Route extends HTMLElement implements IRoute {
     return this._childIndex;
   }
 
-  private _setParams(element: Element, params: Record<string, string>) {
-    if (!element.hasAttribute('data-bind')) {
-      raiseError(`${config.tagNames.route} child element has no 'data-bind' attribute.`);
-    }
-    const bindTypeText = element.getAttribute('data-bind') || '';
-    if (!bindTypeSet.has(bindTypeText as BindType)) {
-      raiseError(`${config.tagNames.route} child element has invalid 'data-bind' attribute: ${bindTypeText}`);
-    }
-    const bindType = bindTypeText as BindType;
-    for(const [key, value] of Object.entries(params)) {
-      switch(bindType) {
-        case "props":
-          (element as any).props = {
-            ...(element as any).props,
-            [key]: value
-          };
-          break;
-        case "states":
-          (element as any).states = {
-            ...(element as any).states,
-            [key]: value
-          };
-          break;
-        case "attr":
-          element.setAttribute(key, value);
-          break;
-        case "":
-          (element as any)[key] = value;
-          break;
-      }
-    }
-  }
 
-  show(params: Record<string, string>) {
+  show(params: Record<string, string>): boolean {
     this._params = {};
     for(const key of this._paramNames) {
       this._params[key] = params[key];
@@ -263,13 +231,20 @@ export class Route extends HTMLElement implements IRoute {
       if (node.nodeType === Node.ELEMENT_NODE) {
         const element = node as Element;
         element.querySelectorAll('[data-bind]').forEach((e) => {
-          this._setParams(e, this._params);
+          assignParams(e, this._params);
         });
         if (element.hasAttribute('data-bind')) {
-          this._setParams(element, this._params);
+          assignParams(element, this._params);
+        }
+        element.querySelectorAll<LayoutOutlet>(config.tagNames.layoutOutlet).forEach((layoutOutlet) => {
+          layoutOutlet.assignParams(this._params);
+        });
+        if (element.tagName.toLowerCase() === config.tagNames.layoutOutlet) {
+          (element as LayoutOutlet).assignParams(this._params);
         }
       }
     }
+    return true;
   }
 
   hide() {
@@ -277,5 +252,14 @@ export class Route extends HTMLElement implements IRoute {
     for(const node of this.childNodeArray) {
       node.parentNode?.removeChild(node);
     }
+  }
+
+  shouldChange(newParams: Record<string, string>): boolean {
+    for(const key of this._paramNames) {
+      if (this._params[key] !== newParams[key]) {
+        return true;
+      }
+    }
+    return false;
   }
 }

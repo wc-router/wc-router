@@ -26,6 +26,39 @@ function raiseError(message) {
 }
 
 const bindTypeSet = new Set(["props", "states", "attr", ""]);
+function assignParams(element, params) {
+    if (!element.hasAttribute('data-bind')) {
+        raiseError(`${element.tagName} has no 'data-bind' attribute.`);
+    }
+    const bindTypeText = element.getAttribute('data-bind') || '';
+    if (!bindTypeSet.has(bindTypeText)) {
+        raiseError(`${element.tagName} has invalid 'data-bind' attribute: ${bindTypeText}`);
+    }
+    const bindType = bindTypeText;
+    for (const [key, value] of Object.entries(params)) {
+        switch (bindType) {
+            case "props":
+                element.props = {
+                    ...element.props,
+                    [key]: value
+                };
+                break;
+            case "states":
+                element.states = {
+                    ...element.states,
+                    [key]: value
+                };
+                break;
+            case "attr":
+                element.setAttribute(key, value);
+                break;
+            case "":
+                element[key] = value;
+                break;
+        }
+    }
+}
+
 class Route extends HTMLElement {
     _path = '';
     _routeParentNode = null;
@@ -214,38 +247,6 @@ class Route extends HTMLElement {
     get childIndex() {
         return this._childIndex;
     }
-    _setParams(element, params) {
-        if (!element.hasAttribute('data-bind')) {
-            raiseError(`${config.tagNames.route} child element has no 'data-bind' attribute.`);
-        }
-        const bindTypeText = element.getAttribute('data-bind') || '';
-        if (!bindTypeSet.has(bindTypeText)) {
-            raiseError(`${config.tagNames.route} child element has invalid 'data-bind' attribute: ${bindTypeText}`);
-        }
-        const bindType = bindTypeText;
-        for (const [key, value] of Object.entries(params)) {
-            switch (bindType) {
-                case "props":
-                    element.props = {
-                        ...element.props,
-                        [key]: value
-                    };
-                    break;
-                case "states":
-                    element.states = {
-                        ...element.states,
-                        [key]: value
-                    };
-                    break;
-                case "attr":
-                    element.setAttribute(key, value);
-                    break;
-                case "":
-                    element[key] = value;
-                    break;
-            }
-        }
-    }
     show(params) {
         this._params = {};
         for (const key of this._paramNames) {
@@ -263,19 +264,34 @@ class Route extends HTMLElement {
             if (node.nodeType === Node.ELEMENT_NODE) {
                 const element = node;
                 element.querySelectorAll('[data-bind]').forEach((e) => {
-                    this._setParams(e, this._params);
+                    assignParams(e, this._params);
                 });
                 if (element.hasAttribute('data-bind')) {
-                    this._setParams(element, this._params);
+                    assignParams(element, this._params);
+                }
+                element.querySelectorAll(config.tagNames.layoutOutlet).forEach((layoutOutlet) => {
+                    layoutOutlet.assignParams(this._params);
+                });
+                if (element.tagName.toLowerCase() === config.tagNames.layoutOutlet) {
+                    element.assignParams(this._params);
                 }
             }
         }
+        return true;
     }
     hide() {
         this._params = {};
         for (const node of this.childNodeArray) {
             node.parentNode?.removeChild(node);
         }
+    }
+    shouldChange(newParams) {
+        for (const key of this._paramNames) {
+            if (this._params[key] !== newParams[key]) {
+                return true;
+            }
+        }
+        return false;
     }
 }
 
@@ -378,21 +394,11 @@ class Outlet extends HTMLElement {
         }
         return this;
     }
-    showRouteContent(routes, params) {
-        // Hide previous routes
-        const routesSet = new Set(routes);
-        for (const route of this._lastRoutes) {
-            if (!routesSet.has(route)) {
-                route.hide();
-            }
-        }
-        const lastRouteSet = new Set(this._lastRoutes);
-        for (const route of routes) {
-            if (!lastRouteSet.has(route)) {
-                route.show(params);
-            }
-        }
-        this._lastRoutes = [...routes];
+    get lastRoutes() {
+        return this._lastRoutes;
+    }
+    set lastRoutes(value) {
+        this._lastRoutes = [...value];
     }
     connectedCallback() {
         //    console.log('WcOutlet connectedCallback');
@@ -400,40 +406,6 @@ class Outlet extends HTMLElement {
 }
 function createOutlet() {
     return document.createElement(config.tagNames.outlet);
-}
-
-function _matchRoutes(routesNode, routeNode, routes, path, results) {
-    const nextRoutes = routes.concat(routeNode);
-    const matchResult = routeNode.testPath(path);
-    if (matchResult) {
-        results.push(matchResult);
-        return; // Stop searching deeper routes once a match is found
-    }
-    for (const childRoute of routeNode.routeChildNodes) {
-        _matchRoutes(routesNode, childRoute, nextRoutes, path, results);
-    }
-}
-function matchRoutes(routesNode, path) {
-    const routes = [];
-    const topLevelRoutes = routesNode.routeChildNodes;
-    const results = [];
-    for (const route of topLevelRoutes) {
-        _matchRoutes(routesNode, route, routes, path, results);
-    }
-    results.sort((a, b) => {
-        const lastRouteA = a.routes.at(-1);
-        const lastRouteB = b.routes.at(-1);
-        const diffWeight = lastRouteA.absoluteWeight - lastRouteB.absoluteWeight;
-        if (diffWeight !== 0) {
-            return -diffWeight;
-        }
-        const diffIndex = lastRouteA.childIndex - lastRouteB.childIndex;
-        return diffIndex;
-    });
-    if (results.length > 0) {
-        return results[0];
-    }
-    return null;
 }
 
 class LayoutOutlet extends HTMLElement {
@@ -517,6 +489,20 @@ class LayoutOutlet extends HTMLElement {
         await this._initialize();
         //    console.log(`${config.tagNames.layoutOutlet} connectedCallback`);
     }
+    assignParams(params) {
+        for (const childNode of this._layoutChildNodes) {
+            if (childNode instanceof Element) {
+                childNode.querySelectorAll('[data-bind]').forEach((e) => {
+                    // 子要素にパラメータを割り当て
+                    assignParams(e, params);
+                });
+                if (childNode.hasAttribute('data-bind')) {
+                    // 子要素にパラメータを割り当て
+                    assignParams(childNode, params);
+                }
+            }
+        }
+    }
 }
 function createLayoutOutlet() {
     return document.createElement(config.tagNames.layoutOutlet);
@@ -580,6 +566,75 @@ async function parse(routesNode) {
     const fr = await _parseNode(routesNode, routesNode.template.content, [], map);
     console.log(fr);
     return fr;
+}
+
+function _matchRoutes(routesNode, routeNode, routes, path, results) {
+    const nextRoutes = routes.concat(routeNode);
+    const matchResult = routeNode.testPath(path);
+    if (matchResult) {
+        results.push(matchResult);
+        return; // Stop searching deeper routes once a match is found
+    }
+    for (const childRoute of routeNode.routeChildNodes) {
+        _matchRoutes(routesNode, childRoute, nextRoutes, path, results);
+    }
+}
+function matchRoutes(routesNode, path) {
+    const routes = [];
+    const topLevelRoutes = routesNode.routeChildNodes;
+    const results = [];
+    for (const route of topLevelRoutes) {
+        _matchRoutes(routesNode, route, routes, path, results);
+    }
+    results.sort((a, b) => {
+        const lastRouteA = a.routes.at(-1);
+        const lastRouteB = b.routes.at(-1);
+        const diffWeight = lastRouteA.absoluteWeight - lastRouteB.absoluteWeight;
+        if (diffWeight !== 0) {
+            return -diffWeight;
+        }
+        const diffIndex = lastRouteA.childIndex - lastRouteB.childIndex;
+        return diffIndex;
+    });
+    if (results.length > 0) {
+        return results[0];
+    }
+    return null;
+}
+
+function showRouteContent(routes, lastRoutes, params) {
+    // Hide previous routes
+    const routesSet = new Set(routes);
+    for (const route of lastRoutes) {
+        if (!routesSet.has(route)) {
+            route.hide();
+        }
+    }
+    const lastRouteSet = new Set(lastRoutes);
+    let force = false;
+    for (const route of routes) {
+        if (!lastRouteSet.has(route) || route.shouldChange(params) || force) {
+            force = route.show(params);
+        }
+    }
+}
+
+function applyRoute(routerNode, outlet, fullPath) {
+    const basename = routerNode.basename;
+    const path = fullPath.startsWith(basename)
+        ? fullPath.slice(basename.length)
+        : fullPath;
+    const matchResult = matchRoutes(routerNode, path);
+    if (!matchResult) {
+        raiseError(`${config.tagNames.router} No route matched for path: ${path}`);
+    }
+    try {
+        const lastRoutes = outlet.lastRoutes;
+        showRouteContent(matchResult.routes, lastRoutes, matchResult.params);
+    }
+    finally {
+        outlet.lastRoutes = matchResult.routes;
+    }
 }
 
 /**
@@ -673,18 +728,8 @@ class Router extends HTMLElement {
         }
         else {
             history.pushState(null, '', fullPath);
-            this._applyRoute(fullPath);
+            applyRoute(this, this.outlet, fullPath);
         }
-    }
-    _applyRoute(fullPath) {
-        const path = fullPath.startsWith(this._basename)
-            ? fullPath.slice(this._basename.length)
-            : fullPath;
-        const matchResult = matchRoutes(this, path);
-        if (!matchResult) {
-            raiseError(`${config.tagNames.router} No route matched for path: ${path}`);
-        }
-        this.outlet.showRouteContent(matchResult.routes, matchResult.params);
     }
     _onNavigateFunc(navEvent) {
         if (!navEvent.canIntercept ||
@@ -696,7 +741,7 @@ class Router extends HTMLElement {
         navEvent.intercept({
             async handler() {
                 const url = new URL(navEvent.destination.url);
-                routesNode._applyRoute(url.pathname);
+                applyRoute(routesNode, routesNode.outlet, url.pathname);
             }
         });
     }
@@ -711,7 +756,7 @@ class Router extends HTMLElement {
         const fragment = await parse(this);
         this._outlet.rootNode.appendChild(fragment);
         const path = this._normalizePath(window.location.pathname);
-        this._applyRoute(path);
+        applyRoute(this, this.outlet, path);
         window.navigation?.addEventListener("navigate", this._onNavigate);
     }
     disconnectedCallback() {

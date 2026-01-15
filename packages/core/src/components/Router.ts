@@ -4,6 +4,8 @@ import { createOutlet, Outlet } from "./Outlet.js";
 import { config } from "../config.js";
 import { raiseError } from "../raiseError.js";
 import { IOutlet, IRoute, IRouter } from "./types.js";
+import { showRouteContent } from "../showRouteContent.js";
+import { applyRoute } from "../applyRoute.js";
 
 /**
  * AppRoutes - Root component for wc-router
@@ -107,19 +109,8 @@ export class Router extends HTMLElement implements IRouter {
       (window as any).navigation.navigate(fullPath);
     } else {
       history.pushState(null, '', fullPath);
-      this._applyRoute(fullPath);
+      applyRoute(this, this.outlet, fullPath);
     }
-  }
-
-  private _applyRoute(fullPath: string): void {
-    const path = fullPath.startsWith(this._basename)
-      ? fullPath.slice(this._basename.length)
-      : fullPath;
-    const matchResult = matchRoutes(this, path);
-    if (!matchResult) {
-      raiseError(`${config.tagNames.router} No route matched for path: ${path}`);
-    }
-    this.outlet.showRouteContent(matchResult.routes, matchResult.params);
   }
 
   private _onNavigateFunc(navEvent: any) {
@@ -134,7 +125,7 @@ export class Router extends HTMLElement implements IRouter {
     navEvent.intercept({
       async handler() {
         const url = new URL(navEvent.destination.url);
-        routesNode._applyRoute(url.pathname);
+        applyRoute(routesNode, routesNode.outlet, url.pathname);
       }
     });
   }
@@ -151,7 +142,7 @@ export class Router extends HTMLElement implements IRouter {
     const fragment = await parse(this);
     this._outlet.rootNode.appendChild(fragment);
     const path = this._normalizePath(window.location.pathname);
-    this._applyRoute(path);
+    applyRoute(this, this.outlet, path);
     ((window as any).navigation as any)?.addEventListener("navigate", this._onNavigate);
   }
 

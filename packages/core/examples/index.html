@@ -16,6 +16,7 @@
         <wc-link to="/contact">Contact</wc-link>
         <wc-link to="/admin">Admin</wc-link>
         <wc-link to="/admin/users/123">User 123</wc-link>
+        <wc-link to="/admin/users/456">User 456</wc-link>
       </nav>
     </section>
     <section>
@@ -45,8 +46,9 @@
       </wc-route>
       <wc-route path="/admin">
         <div>Admin Page</div>
-        <wc-route path="users/:userId">
+        <wc-route path="users/:value">
           <div>Users Page</div>
+          <input type="text" data-bind="" />
         </wc-route>
       </wc-route>
     </template>

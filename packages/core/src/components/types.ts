@@ -32,8 +32,9 @@ export interface IRoute {
   readonly weight: number;
   readonly absoluteWeight: number;
   readonly childIndex: number;
-  show(params: Record<string, string>): void;
+  show(params: Record<string, string>): boolean;
   hide(): void;
+  shouldChange(newParams: Record<string, string>): boolean;
 }
 
 export interface IRouter {
@@ -47,12 +48,13 @@ export interface IRouter {
 export interface IOutlet {
   routesNode: IRouter;
   readonly rootNode: HTMLElement | ShadowRoot;
-  showRouteContent(routes: IRoute[], params: Record<string, string>): void;
+  lastRoutes: IRoute[];
 }
 
 export interface ILayoutOutlet {
   layout: ILayout;
   readonly name: string;
+  assignParams(params: Record<string, string>): void;
 }
 
 export interface ILink {

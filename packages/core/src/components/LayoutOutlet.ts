@@ -1,3 +1,4 @@
+import { assignParams } from "../assignParams.js";
 import { config } from "../config.js";
 import { raiseError } from "../raiseError.js";
 import { ILayout, ILayoutOutlet } from "./types.js";
@@ -86,6 +87,21 @@ export class LayoutOutlet extends HTMLElement implements ILayoutOutlet {
   async connectedCallback() {
     await this._initialize();
 //    console.log(`${config.tagNames.layoutOutlet} connectedCallback`);
+  }
+
+  assignParams(params: Record<string, string>): void {
+    for(const childNode of this._layoutChildNodes) {
+      if (childNode instanceof Element) {
+        childNode.querySelectorAll('[data-bind]').forEach((e) => {
+          // 子要素にパラメータを割り当て
+          assignParams(e, params);
+        });
+        if (childNode.hasAttribute('data-bind')) {
+          // 子要素にパラメータを割り当て
+          assignParams(childNode, params);
+        }
+      }
+    }
   }
 }
 

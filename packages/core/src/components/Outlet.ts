@@ -29,21 +29,11 @@ export class Outlet extends HTMLElement implements IOutlet {
     return this;
   }
 
-  showRouteContent(routes: IRoute[], params: Record<string, string>): void {
-    // Hide previous routes
-    const routesSet = new Set<IRoute>(routes);
-    for (const route of this._lastRoutes) {
-      if (!routesSet.has(route)) {
-        route.hide();
-      }
-    }
-    const lastRouteSet = new Set<IRoute>(this._lastRoutes);
-    for (const route of routes) {
-      if (!lastRouteSet.has(route)) {
-        route.show(params);
-      }
-    }
-    this._lastRoutes = [ ...routes ];
+  get lastRoutes(): IRoute[] {
+    return this._lastRoutes;
+  }
+  set lastRoutes(value: IRoute[]) {
+    this._lastRoutes = [ ...value ];
   }
 
   connectedCallback() {
