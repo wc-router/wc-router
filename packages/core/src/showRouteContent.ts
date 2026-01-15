@@ -1,6 +1,10 @@
 import { IRoute } from "./components/types";
 
-export function showRouteContent(routes: IRoute[], lastRoutes: IRoute[], params: Record<string, string>): void {
+export async function showRouteContent(
+  routes: IRoute[], 
+  lastRoutes: IRoute[], 
+  params: Record<string, string>
+): Promise<void> {
   // Hide previous routes
   const routesSet = new Set<IRoute>(routes);
   for (const route of lastRoutes) {
@@ -12,7 +16,7 @@ export function showRouteContent(routes: IRoute[], lastRoutes: IRoute[], params:
   let force = false;
   for (const route of routes) {
     if (!lastRouteSet.has(route) || route.shouldChange(params) || force) {
-      force = route.show(params);
+      force = await route.show(params);
     }
   }
 }

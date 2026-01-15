@@ -103,13 +103,13 @@ export class Router extends HTMLElement implements IRouter {
     return this._routeChildNodes;
   }
 
-  navigate(path: string): void {
+  async navigate(path: string): Promise<void> {
     const fullPath = this._basename + path;
     if ((window as any).navigation) {
       (window as any).navigation.navigate(fullPath);
     } else {
       history.pushState(null, '', fullPath);
-      applyRoute(this, this.outlet, fullPath);
+      await applyRoute(this, this.outlet, fullPath);
     }
   }
 
@@ -125,7 +125,7 @@ export class Router extends HTMLElement implements IRouter {
     navEvent.intercept({
       async handler() {
         const url = new URL(navEvent.destination.url);
-        applyRoute(routesNode, routesNode.outlet, url.pathname);
+        await applyRoute(routesNode, routesNode.outlet, url.pathname);
       }
     });
   }
@@ -142,7 +142,7 @@ export class Router extends HTMLElement implements IRouter {
     const fragment = await parse(this);
     this._outlet.rootNode.appendChild(fragment);
     const path = this._normalizePath(window.location.pathname);
-    applyRoute(this, this.outlet, path);
+    await applyRoute(this, this.outlet, path);
     ((window as any).navigation as any)?.addEventListener("navigate", this._onNavigate);
   }
 

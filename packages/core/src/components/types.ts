@@ -4,6 +4,8 @@ export interface IRouteMatchResult {
   params: Record<string, string>;
 }
 
+export type GuardHandler = (toPath: string, fromPath: string) => boolean | Promise<boolean>;
+
 export interface _ILayout {
   readonly uuid: string;
   readonly enableShadowRoot: boolean;
@@ -32,7 +34,8 @@ export interface IRoute {
   readonly weight: number;
   readonly absoluteWeight: number;
   readonly childIndex: number;
-  show(params: Record<string, string>): boolean;
+  guardHandler: GuardHandler;
+  show(params: Record<string, string>): Promise<boolean>;
   hide(): void;
   shouldChange(newParams: Record<string, string>): boolean;
 }
@@ -42,7 +45,7 @@ export interface IRouter {
   readonly outlet: IOutlet;
   readonly template: HTMLTemplateElement;
   readonly routeChildNodes: IRoute[];
-  navigate(path: string): void;
+  navigate(path: string): Promise<void>;
 }
 
 export interface IOutlet {

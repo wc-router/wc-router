@@ -60,6 +60,7 @@ function assignParams(element, params) {
 }
 
 class Route extends HTMLElement {
+    _name = '';
     _path = '';
     _routeParentNode = null;
     _routeChildNodes = [];
@@ -75,6 +76,11 @@ class Route extends HTMLElement {
     _weight = -1;
     _absoluteWeight = 0;
     _childIndex = 0;
+    _hasGuard = false;
+    _guardHandler = null;
+    _waitForSetGuardHandler = null;
+    _resolveSetGuardHandler = null;
+    _guardFallbackPath = '';
     constructor() {
         super();
         if (this.hasAttribute('path')) {
@@ -102,6 +108,13 @@ class Route extends HTMLElement {
             }
         }
         this._patternText = patternSegments.join('\\/');
+        this._hasGuard = this.hasAttribute('guard');
+        if (this._hasGuard) {
+            this._guardFallbackPath = this.getAttribute('guard') || '/';
+            this._waitForSetGuardHandler = new Promise((resolve) => {
+                this._resolveSetGuardHandler = resolve;
+            });
+        }
     }
     get routeParentNode() {
         return this._routeParentNode;
@@ -247,7 +260,24 @@ class Route extends HTMLElement {
     get childIndex() {
         return this._childIndex;
     }
-    show(params) {
+    get name() {
+        return this._name;
+    }
+    async show(params) {
+        if (this._hasGuard && this._waitForSetGuardHandler) {
+            await this._waitForSetGuardHandler;
+        }
+        if (this._guardHandler) {
+            const toPath = ""; // ToDO: set toPath
+            const fromPath = ""; // ToDO: set fromPath
+            const allowed = await this._guardHandler(toPath, fromPath);
+            if (!allowed) {
+                queueMicrotask(() => {
+                    this.routesNode.navigate(this._guardFallbackPath);
+                });
+                return false;
+            }
+        }
         this._params = {};
         for (const key of this._paramNames) {
             this._params[key] = params[key];
@@ -292,6 +322,16 @@ class Route extends HTMLElement {
             }
         }
         return false;
+    }
+    get guardHandler() {
+        if (!this._guardHandler) {
+            raiseError(`${config.tagNames.route} has no guardHandler.`);
+        }
+        return this._guardHandler;
+    }
+    set guardHandler(value) {
+        this._resolveSetGuardHandler?.();
+        this._guardHandler = value;
     }
 }
 
@@ -602,7 +642,7 @@ function matchRoutes(routesNode, path) {
     return null;
 }
 
-function showRouteContent(routes, lastRoutes, params) {
+async function showRouteContent(routes, lastRoutes, params) {
     // Hide previous routes
     const routesSet = new Set(routes);
     for (const route of lastRoutes) {
@@ -614,12 +654,12 @@ function showRouteContent(routes, lastRoutes, params) {
     let force = false;
     for (const route of routes) {
         if (!lastRouteSet.has(route) || route.shouldChange(params) || force) {
-            force = route.show(params);
+            force = await route.show(params);
         }
     }
 }
 
-function applyRoute(routerNode, outlet, fullPath) {
+async function applyRoute(routerNode, outlet, fullPath) {
     const basename = routerNode.basename;
     const path = fullPath.startsWith(basename)
         ? fullPath.slice(basename.length)
@@ -630,7 +670,7 @@ function applyRoute(routerNode, outlet, fullPath) {
     }
     try {
         const lastRoutes = outlet.lastRoutes;
-        showRouteContent(matchResult.routes, lastRoutes, matchResult.params);
+        await showRouteContent(matchResult.routes, lastRoutes, matchResult.params);
     }
     finally {
         outlet.lastRoutes = matchResult.routes;
@@ -721,14 +761,14 @@ class Router extends HTMLElement {
     get routeChildNodes() {
         return this._routeChildNodes;
     }
-    navigate(path) {
+    async navigate(path) {
         const fullPath = this._basename + path;
         if (window.navigation) {
             window.navigation.navigate(fullPath);
         }
         else {
             history.pushState(null, '', fullPath);
-            applyRoute(this, this.outlet, fullPath);
+            await applyRoute(this, this.outlet, fullPath);
         }
     }
     _onNavigateFunc(navEvent) {
@@ -741,7 +781,7 @@ class Router extends HTMLElement {
         navEvent.intercept({
             async handler() {
                 const url = new URL(navEvent.destination.url);
-                applyRoute(routesNode, routesNode.outlet, url.pathname);
+                await applyRoute(routesNode, routesNode.outlet, url.pathname);
             }
         });
     }
@@ -756,7 +796,7 @@ class Router extends HTMLElement {
         const fragment = await parse(this);
         this._outlet.rootNode.appendChild(fragment);
         const path = this._normalizePath(window.location.pathname);
-        applyRoute(this, this.outlet, path);
+        await applyRoute(this, this.outlet, path);
         window.navigation?.addEventListener("navigate", this._onNavigate);
     }
     disconnectedCallback() {

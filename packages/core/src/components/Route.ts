@@ -1,11 +1,12 @@
 import { getUUID } from "../getUUID.js";
 import { config } from "../config.js";
 import { raiseError } from "../raiseError.js";
-import { IRouteMatchResult, IRoute, IRouter, BindType, ILayoutOutlet } from "./types.js";
+import { IRouteMatchResult, IRoute, IRouter, BindType, ILayoutOutlet, GuardHandler } from "./types.js";
 import { assignParams } from "../assignParams.js";
 import { LayoutOutlet } from "./LayoutOutlet.js";
 
 export class Route extends HTMLElement implements IRoute {
+  private _name: string = '';
   private _path: string = '';
   private _routeParentNode: IRoute | null = null;
   private _routeChildNodes: IRoute[] = [];
@@ -21,6 +22,12 @@ export class Route extends HTMLElement implements IRoute {
   private _weight: number = -1;
   private _absoluteWeight: number = 0;
   private _childIndex: number = 0;
+  private _hasGuard: boolean = false;
+  private _guardHandler: GuardHandler | null = null;
+  private _waitForSetGuardHandler: Promise<void> | null = null;
+  private _resolveSetGuardHandler: (() => void) | null = null;
+  private _guardFallbackPath: string = '';
+
   constructor() {
     super();
     if (this.hasAttribute('path')) {
@@ -45,6 +52,13 @@ export class Route extends HTMLElement implements IRoute {
       }
     }
     this._patternText = patternSegments.join('\\/');
+    this._hasGuard = this.hasAttribute('guard');
+    if (this._hasGuard) {
+      this._guardFallbackPath = this.getAttribute('guard') || '/';
+      this._waitForSetGuardHandler = new Promise((resolve) => {
+        this._resolveSetGuardHandler = resolve;
+      });
+    }
   }
 
   get routeParentNode(): IRoute | null {
@@ -214,8 +228,26 @@ export class Route extends HTMLElement implements IRoute {
     return this._childIndex;
   }
 
+  get name(): string {
+    return this._name;
+  }
 
-  show(params: Record<string, string>): boolean {
+  async show(params: Record<string, string>): Promise<boolean> {
+    if (this._hasGuard && this._waitForSetGuardHandler) {
+      await this._waitForSetGuardHandler;
+    }
+    if (this._guardHandler) {
+      const toPath = ""; // ToDO: set toPath
+      const fromPath = ""; // ToDO: set fromPath
+      const allowed = await this._guardHandler(toPath, fromPath);
+      if (!allowed) {
+        queueMicrotask(() => {
+          this.routesNode.navigate(this._guardFallbackPath);
+        });
+        return false;
+      }
+    }
+
     this._params = {};
     for(const key of this._paramNames) {
       this._params[key] = params[key];
@@ -261,5 +293,16 @@ export class Route extends HTMLElement implements IRoute {
       }
     }
     return false;
+  }
+
+  get guardHandler(): GuardHandler {
+    if (!this._guardHandler) {
+      raiseError(`${config.tagNames.route} has no guardHandler.`);
+    }
+    return this._guardHandler!;
+  }
+  set guardHandler(value: GuardHandler) {
+    this._resolveSetGuardHandler?.();
+    this._guardHandler = value;
   }
 }
