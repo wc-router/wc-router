@@ -4,7 +4,8 @@ const config = {
         router: "wc-router",
         outlet: "wc-outlet",
         layout: "wc-layout",
-        layoutOutlet: "wc-layout-outlet"
+        layoutOutlet: "wc-layout-outlet",
+        link: "wc-link"
     },
     enableShadowRoot: false
 };
@@ -549,12 +550,40 @@ class Router extends HTMLElement {
     _outlet = null;
     _template = null;
     _routeChildNodes = [];
+    _basename = '';
     constructor() {
         super();
+        this._basename = this.getAttribute('basename')
+            || this._getBasename()
+            || '';
+        const hasBaseTag = document.querySelector('base[href]') !== null;
+        const url = new URL(window.location.href);
+        if (this._basename === "" && !hasBaseTag && url.pathname !== "/") {
+            raiseError(`${config.tagNames.router} basename is empty, but current path is not "/".`);
+        }
         if (Router._instance) {
             raiseError(`${config.tagNames.router} can only be instantiated once.`);
         }
         Router._instance = this;
+    }
+    _normalizePath(_path) {
+        let path = _path;
+        if (!path.endsWith("/")) {
+            path = path.replace(/\/[^/]*$/, "/"); // ファイル名(or末尾セグメント)を落として / で終わらせる
+        }
+        // 念のため先頭 / と、連続スラッシュの正規化
+        if (!path.startsWith("/"))
+            path = "/" + path;
+        path = path.replace(/\/{2,}/g, "/");
+        return path;
+    }
+    _getBasename() {
+        const base = new URL(document.baseURI);
+        let path = base.pathname || "/";
+        if (path === "/") {
+            return "";
+        }
+        return this._normalizePath(path);
     }
     static get instance() {
         if (!Router._instance) {
@@ -564,6 +593,9 @@ class Router extends HTMLElement {
     }
     static navigate(path) {
         Router.instance.navigate(path);
+    }
+    get basename() {
+        return this._basename;
     }
     _getOutlet() {
         let outlet = document.querySelector(config.tagNames.outlet);
@@ -593,15 +625,19 @@ class Router extends HTMLElement {
         return this._routeChildNodes;
     }
     navigate(path) {
+        const fullPath = this._basename + path;
         if (window.navigation) {
-            window.navigation.navigate(path);
+            window.navigation.navigate(fullPath);
         }
         else {
-            history.pushState(null, '', path);
-            this._applyRoute(path);
+            history.pushState(null, '', fullPath);
+            this._applyRoute(fullPath);
         }
     }
-    _applyRoute(path) {
+    _applyRoute(fullPath) {
+        const path = fullPath.startsWith(this._basename)
+            ? fullPath.slice(this._basename.length)
+            : fullPath;
         const matchResult = matchRoutes(this, path);
         if (!matchResult) {
             raiseError(`${config.tagNames.router} No route matched for path: ${path}`);
@@ -632,11 +668,26 @@ class Router extends HTMLElement {
         }
         const fragment = await parse(this);
         this._outlet.rootNode.appendChild(fragment);
-        this._applyRoute(window.location.pathname);
+        const path = this._normalizePath(window.location.pathname);
+        this._applyRoute(path);
         window.navigation?.addEventListener("navigate", this._onNavigate);
     }
     disconnectedCallback() {
         window.navigation?.removeEventListener("navigate", this._onNavigate);
+    }
+}
+
+class Link extends HTMLElement {
+    constructor() {
+        super();
+        this.addEventListener('click', (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            const href = this.getAttribute('to') || '';
+            if (href) {
+                Router.navigate(href);
+            }
+        });
     }
 }
 
@@ -656,6 +707,9 @@ function registerComponents() {
     }
     if (!customElements.get(config.tagNames.router)) {
         customElements.define(config.tagNames.router, Router);
+    }
+    if (!customElements.get(config.tagNames.link)) {
+        customElements.define(config.tagNames.link, Link);
     }
 }
 

@@ -6,7 +6,8 @@ export const config: IConfig = {
     router: "wc-router",
     outlet: "wc-outlet",
     layout: "wc-layout",
-    layoutOutlet: "wc-layout-outlet"
+    layoutOutlet: "wc-layout-outlet",
+    link: "wc-link"
   },
   enableShadowRoot: false
 };

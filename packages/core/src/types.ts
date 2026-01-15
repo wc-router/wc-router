@@ -5,6 +5,7 @@ export interface ITagNames {
   outlet: string;
   layout: string;
   layoutOutlet: string;
+  link: string;
 }
 
 export interface IConfig {

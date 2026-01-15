@@ -4,6 +4,7 @@ interface ITagNames {
     outlet: string;
     layout: string;
     layoutOutlet: string;
+    link: string;
 }
 interface IConfig {
     tagNames: ITagNames;

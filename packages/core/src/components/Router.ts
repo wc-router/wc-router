@@ -15,12 +15,43 @@ export class Router extends HTMLElement implements IRouter {
   private _outlet: IOutlet | null = null;
   private _template: HTMLTemplateElement | null = null;
   private _routeChildNodes: IRoute[] = [];
+  private _basename: string = '';
   constructor() {
     super();
+    this._basename = this.getAttribute('basename') 
+      || this._getBasename() 
+      || '';
+    const hasBaseTag = document.querySelector('base[href]') !== null;
+    const url = new URL(window.location.href);
+    if (this._basename === "" && !hasBaseTag && url.pathname !== "/") {
+      raiseError(`${config.tagNames.router} basename is empty, but current path is not "/".`);
+    }
     if (Router._instance) {
       raiseError(`${config.tagNames.router} can only be instantiated once.`);
     }
     Router._instance = this;
+  }
+
+  private _normalizePath(_path: string): string {
+    let path = _path;
+    if (!path.endsWith("/")) {
+      path = path.replace(/\/[^/]*$/, "/"); // ファイル名(or末尾セグメント)を落として / で終わらせる
+    }
+
+    // 念のため先頭 / と、連続スラッシュの正規化
+    if (!path.startsWith("/")) path = "/" + path;
+    path = path.replace(/\/{2,}/g, "/");
+
+    return path;
+  }
+
+  private _getBasename(): string {
+    const base = new URL(document.baseURI);
+    let path = base.pathname || "/";
+    if (path === "/") {
+      return "";
+    }
+    return this._normalizePath(path);
   }
 
   static get instance(): IRouter {
@@ -32,6 +63,10 @@ export class Router extends HTMLElement implements IRouter {
 
   static navigate(path: string): void {
     Router.instance.navigate(path);
+  }
+
+  get basename(): string {
+    return this._basename;
   }
 
   private _getOutlet(): IOutlet {
@@ -67,15 +102,19 @@ export class Router extends HTMLElement implements IRouter {
   }
 
   navigate(path: string): void {
+    const fullPath = this._basename + path;
     if ((window as any).navigation) {
-      (window as any).navigation.navigate(path);
+      (window as any).navigation.navigate(fullPath);
     } else {
-      history.pushState(null, '', path);
-      this._applyRoute(path);
+      history.pushState(null, '', fullPath);
+      this._applyRoute(fullPath);
     }
   }
 
-  private _applyRoute(path: string): void {
+  private _applyRoute(fullPath: string): void {
+    const path = fullPath.startsWith(this._basename)
+      ? fullPath.slice(this._basename.length)
+      : fullPath;
     const matchResult = matchRoutes(this, path);
     if (!matchResult) {
       raiseError(`${config.tagNames.router} No route matched for path: ${path}`);
@@ -111,7 +150,8 @@ export class Router extends HTMLElement implements IRouter {
     }
     const fragment = await parse(this);
     this._outlet.rootNode.appendChild(fragment);
-    this._applyRoute(window.location.pathname);
+    const path = this._normalizePath(window.location.pathname);
+    this._applyRoute(path);
     ((window as any).navigation as any)?.addEventListener("navigate", this._onNavigate);
   }
 

@@ -37,6 +37,7 @@ export interface IRoute {
 }
 
 export interface IRouter {
+  readonly basename: string;
   readonly outlet: IOutlet;
   readonly template: HTMLTemplateElement;
   readonly routeChildNodes: IRoute[];
