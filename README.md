@@ -17,7 +17,7 @@ Web Components専用の宣言的ルーティングライブラリ
 子ルートのパスは親パスを自動継承します（相対パス方式）。
 
 ```html
-<wc-routes>
+<wc-router>
   <template>
     <wc-route path="/">
       <wc-layout layout="main-layout">
@@ -53,7 +53,11 @@ Web Components専用の宣言的ルーティングライブラリ
       </wc-layout>
     </wc-route>
   </template>
-</wc-routes>
+</wc-router>
+
+<wc-outlet>
+  <!-- building dom tree, and show here -->
+</wc-outlet>
 
 <template id="main-layout">
   <section>

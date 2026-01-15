@@ -1,14 +1,13 @@
 import { getUUID } from "../getUUID.js";
-import { WcRoutes } from "./WcRoutes.js";
 import { config } from "../config.js";
 import { raiseError } from "../raiseError.js";
-import { IRouteMatchResult } from "./types.js";
+import { IRouteMatchResult, IRoute, IRouter } from "./types.js";
 
-export class WcRoute extends HTMLElement {
+export class Route extends HTMLElement implements IRoute {
   private _path: string = '';
-  private _routeParentNode: WcRoute | null = null;
-  private _routeChildNodes: WcRoute[] = [];
-  private _routesNode: WcRoutes | null = null;
+  private _routeParentNode: IRoute | null = null;
+  private _routeChildNodes: IRoute[] = [];
+  private _routesNode: IRouter | null = null;
   private _uuid: string = getUUID();
   private _placeHolder: Comment | null = null;
   private _childNodeArray: Node[] = [];
@@ -46,10 +45,10 @@ export class WcRoute extends HTMLElement {
     this._patternText = patternSegments.join('\\/');
   }
 
-  get routeParentNode(): WcRoute | null {
+  get routeParentNode(): IRoute | null {
     return this._routeParentNode;
   }
-  set routeParentNode(value: WcRoute | null) {
+  set routeParentNode(value: IRoute | null) {
     this._routeParentNode = value;
     if (value) {
       value.routeChildNodes.push(this);
@@ -61,17 +60,17 @@ export class WcRoute extends HTMLElement {
     }
   }
 
-  get routeChildNodes(): WcRoute[] {
+  get routeChildNodes(): IRoute[] {
     return this._routeChildNodes;
   }
 
-  get routesNode(): WcRoutes {
+  get routesNode(): IRouter {
     if (!this._routesNode) {
       raiseError(`${config.tagNames.route} has no routesNode.`);
     }
     return this._routesNode;
   }
-  set routesNode(value: WcRoutes) {
+  set routesNode(value: IRouter) {
     this._routesNode = value;
   }
 
@@ -84,7 +83,7 @@ export class WcRoute extends HTMLElement {
   }
 
   private _checkParentNode<T>(
-    hasParentCallback: (routeParentNode: WcRoute) => T, 
+    hasParentCallback: (routeParentNode: IRoute) => T, 
     noParentCallback: () => T
   ): T {
     if (this.isRelative && !this._routeParentNode) {
@@ -156,7 +155,7 @@ export class WcRoute extends HTMLElement {
     return null;
   }
 
-  get routes(): WcRoute[] {
+  get routes(): IRoute[] {
     if (this.routeParentNode) {
       return this.routeParentNode.routes.concat(this);
     } else {

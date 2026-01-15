@@ -1,7 +1,7 @@
 const config = {
     tagNames: {
         route: "wc-route",
-        routes: "wc-routes",
+        router: "wc-router",
         outlet: "wc-outlet",
         layout: "wc-layout",
         layoutOutlet: "wc-layout-outlet"
@@ -24,7 +24,7 @@ function raiseError(message) {
     throw new Error(`[wc-router] ${message}`);
 }
 
-class WcRoute extends HTMLElement {
+class Route extends HTMLElement {
     _path = '';
     _routeParentNode = null;
     _routeChildNodes = [];
@@ -237,20 +237,14 @@ class WcRoute extends HTMLElement {
 }
 
 const cache = new Map();
-class WcLayout extends HTMLElement {
-    _template;
+class Layout extends HTMLElement {
     _uuid = getUUID();
-    _placeHolder = null;
     _name = '';
     constructor() {
         super();
-        this._template = document.createElement('template');
         this._name = this.getAttribute('name') || '';
     }
-    loadTemplateFromCache(source) {
-        return cache.get(source);
-    }
-    async loadTemplateFromSource(source) {
+    async _loadTemplateFromSource(source) {
         try {
             const response = await fetch(source);
             if (!response.ok) {
@@ -264,7 +258,7 @@ class WcLayout extends HTMLElement {
             raiseError(`${config.tagNames.layout} failed to load layout from source: ${source}, error: ${error}`);
         }
     }
-    loadTemplateFromDocument(id) {
+    _loadTemplateFromDocument(id) {
         const element = document.getElementById(`${id}`);
         if (element) {
             if (element instanceof HTMLTemplateElement) {
@@ -285,12 +279,12 @@ class WcLayout extends HTMLElement {
                 template.innerHTML = cache.get(source) || '';
             }
             else {
-                template.innerHTML = await this.loadTemplateFromSource(source) || '';
+                template.innerHTML = await this._loadTemplateFromSource(source) || '';
                 cache.set(source, template.innerHTML);
             }
         }
         else if (layoutId) {
-            const templateContent = this.loadTemplateFromDocument(layoutId);
+            const templateContent = this._loadTemplateFromDocument(layoutId);
             if (templateContent) {
                 template.innerHTML = templateContent;
             }
@@ -302,12 +296,6 @@ class WcLayout extends HTMLElement {
     }
     get uuid() {
         return this._uuid;
-    }
-    get placeHolder() {
-        return this._placeHolder;
-    }
-    set placeHolder(value) {
-        this._placeHolder = value;
     }
     get enableShadowRoot() {
         if (this.hasAttribute('enable-shadow-root')) {
@@ -323,7 +311,7 @@ class WcLayout extends HTMLElement {
     }
 }
 
-class WcOutlet extends HTMLElement {
+class Outlet extends HTMLElement {
     _routesNode = null;
     _lastRoutes = [];
     constructor() {
@@ -333,6 +321,9 @@ class WcOutlet extends HTMLElement {
         }
     }
     get routesNode() {
+        if (!this._routesNode) {
+            raiseError(`${config.tagNames.outlet} has no routesNode.`);
+        }
         return this._routesNode;
     }
     set routesNode(value) {
@@ -363,6 +354,9 @@ class WcOutlet extends HTMLElement {
     connectedCallback() {
         //    console.log('WcOutlet connectedCallback');
     }
+}
+function createOutlet() {
+    return document.createElement(config.tagNames.outlet);
 }
 
 function _matchRoutes(routesNode, routeNode, routes, path, results) {
@@ -399,172 +393,7 @@ function matchRoutes(routesNode, path) {
     return null;
 }
 
-async function _parseNode(routesNode, node, routes, map) {
-    const routeParentNode = routes.length > 0 ? routes[routes.length - 1] : null;
-    const fragment = document.createDocumentFragment();
-    const childNodes = Array.from(node.childNodes);
-    for (const childNode of childNodes) {
-        if (childNode.nodeType === Node.ELEMENT_NODE) {
-            let appendNode = childNode;
-            let element = childNode;
-            const tagName = element.tagName.toLowerCase();
-            if (tagName === config.tagNames.route) {
-                const childFragment = document.createDocumentFragment();
-                // Move child nodes to fragment to avoid duplication of
-                for (const childNode of Array.from(element.childNodes)) {
-                    childFragment.appendChild(childNode);
-                }
-                const cloneElement = document.importNode(element, true);
-                customElements.upgrade(cloneElement);
-                cloneElement.appendChild(childFragment);
-                const route = cloneElement;
-                route.routesNode = routesNode;
-                route.routeParentNode = routeParentNode;
-                route.placeHolder = document.createComment(`@@route:${route.uuid}`);
-                routes.push(route);
-                map.set(route.uuid, route);
-                appendNode = route.placeHolder;
-                element = route;
-            }
-            else if (tagName === config.tagNames.layout) {
-                const childFragment = document.createDocumentFragment();
-                // Move child nodes to fragment to avoid duplication of
-                for (const childNode of Array.from(element.childNodes)) {
-                    childFragment.appendChild(childNode);
-                }
-                const cloneElement = document.importNode(element, true);
-                customElements.upgrade(cloneElement);
-                cloneElement.appendChild(childFragment);
-                const layout = cloneElement;
-                const layoutOutlet = document.createElement(config.tagNames.layoutOutlet);
-                layoutOutlet.layout = layout;
-                appendNode = layoutOutlet;
-                element = cloneElement;
-            }
-            const children = await _parseNode(routesNode, element, routes, map);
-            element.innerHTML = "";
-            element.appendChild(children);
-            fragment.appendChild(appendNode);
-        }
-        else {
-            fragment.appendChild(childNode);
-        }
-    }
-    return fragment;
-}
-async function parse(routesNode) {
-    const map = new Map();
-    const fr = await _parseNode(routesNode, routesNode.template.content, [], map);
-    console.log(fr);
-    return fr;
-}
-
-/**
- * AppRoutes - Root component for wc-router
- *
- * Container element that manages route definitions and navigation.
- */
-class WcRoutes extends HTMLElement {
-    static _instance = null;
-    _outlet = null;
-    _template = null;
-    _routeChildNodes = [];
-    constructor() {
-        super();
-        if (WcRoutes._instance) {
-            raiseError(`${config.tagNames.routes} can only be instantiated once.`);
-        }
-        WcRoutes._instance = this;
-        console.log(this.rootElement.querySelectorAll("*"));
-    }
-    static get instance() {
-        if (!WcRoutes._instance) {
-            raiseError(`${config.tagNames.routes} has not been instantiated.`);
-        }
-        return WcRoutes._instance;
-    }
-    static navigate(path) {
-        WcRoutes.instance.navigate(path);
-    }
-    _getOutlet() {
-        let outlet = document.querySelector(config.tagNames.outlet);
-        if (!outlet) {
-            outlet = document.createElement(config.tagNames.outlet);
-            document.body.appendChild(outlet);
-        }
-        return outlet;
-    }
-    _getTemplate() {
-        const template = this.querySelector("template");
-        return template;
-    }
-    get outlet() {
-        if (!this._outlet) {
-            raiseError(`${config.tagNames.routes} has no outlet.`);
-        }
-        return this._outlet;
-    }
-    get template() {
-        if (!this._template) {
-            raiseError(`${config.tagNames.routes} has no template.`);
-        }
-        return this._template;
-    }
-    get routeChildNodes() {
-        return this._routeChildNodes;
-    }
-    navigate(path) {
-        if (window.navigation) {
-            window.navigation.navigate(path);
-        }
-        else {
-            history.pushState(null, '', path);
-            this._applyRoute(path);
-        }
-    }
-    _applyRoute(path) {
-        const matchResult = matchRoutes(this, path);
-        if (!matchResult) {
-            raiseError(`${config.tagNames.routes} No route matched for path: ${path}`);
-        }
-        this.outlet.showRouteContent(matchResult.routes, matchResult.params);
-    }
-    _onNavigateFunc(navEvent) {
-        if (!navEvent.canIntercept ||
-            navEvent.hashChange ||
-            navEvent.downloadRequest !== null) {
-            return;
-        }
-        const routesNode = this;
-        navEvent.intercept({
-            async handler() {
-                const url = new URL(navEvent.destination.url);
-                routesNode._applyRoute(url.pathname);
-            }
-        });
-    }
-    _onNavigate = this._onNavigateFunc.bind(this);
-    async connectedCallback() {
-        this._outlet = this._getOutlet();
-        this._outlet.routesNode = this;
-        this._template = this._getTemplate();
-        if (!this._template) {
-            raiseError(`${config.tagNames.routes} should have a <template> child element.`);
-        }
-        const fragment = await parse(this);
-        this._outlet.rootNode.appendChild(fragment);
-        this._applyRoute(window.location.pathname);
-        window.navigation?.addEventListener("navigate", this._onNavigate);
-    }
-    disconnectedCallback() {
-        window.navigation?.removeEventListener("navigate", this._onNavigate);
-    }
-    get rootElement() {
-        return this.shadowRoot ?? this;
-    }
-}
-
-class WcLayoutOutlet extends HTMLElement {
+class LayoutOutlet extends HTMLElement {
     _layout = null;
     _isInitialized = false;
     _layoutChildNodes = [];
@@ -581,7 +410,10 @@ class WcLayoutOutlet extends HTMLElement {
         this._layout = value;
         this.setAttribute('name', value.name);
     }
-    async initialize() {
+    get name() {
+        return this.layout.name;
+    }
+    async _initialize() {
         if (this._isInitialized) {
             return;
         }
@@ -639,33 +471,191 @@ class WcLayoutOutlet extends HTMLElement {
         }
     }
     async connectedCallback() {
-        await this.initialize();
+        await this._initialize();
         //    console.log(`${config.tagNames.layoutOutlet} connectedCallback`);
     }
-    get rootNode() {
-        if (this.shadowRoot) {
-            return this.shadowRoot;
+}
+function createLayoutOutlet() {
+    return document.createElement(config.tagNames.layoutOutlet);
+}
+
+async function _parseNode(routesNode, node, routes, map) {
+    const routeParentNode = routes.length > 0 ? routes[routes.length - 1] : null;
+    const fragment = document.createDocumentFragment();
+    const childNodes = Array.from(node.childNodes);
+    for (const childNode of childNodes) {
+        if (childNode.nodeType === Node.ELEMENT_NODE) {
+            let appendNode = childNode;
+            let element = childNode;
+            const tagName = element.tagName.toLowerCase();
+            if (tagName === config.tagNames.route) {
+                const childFragment = document.createDocumentFragment();
+                // Move child nodes to fragment to avoid duplication of
+                for (const childNode of Array.from(element.childNodes)) {
+                    childFragment.appendChild(childNode);
+                }
+                const cloneElement = document.importNode(element, true);
+                customElements.upgrade(cloneElement);
+                cloneElement.appendChild(childFragment);
+                const route = cloneElement;
+                route.routesNode = routesNode;
+                route.routeParentNode = routeParentNode;
+                route.placeHolder = document.createComment(`@@route:${route.uuid}`);
+                routes.push(route);
+                map.set(route.uuid, route);
+                appendNode = route.placeHolder;
+                element = route;
+            }
+            else if (tagName === config.tagNames.layout) {
+                const childFragment = document.createDocumentFragment();
+                // Move child nodes to fragment to avoid duplication of
+                for (const childNode of Array.from(element.childNodes)) {
+                    childFragment.appendChild(childNode);
+                }
+                const cloneElement = document.importNode(element, true);
+                customElements.upgrade(cloneElement);
+                cloneElement.appendChild(childFragment);
+                const layout = cloneElement;
+                const layoutOutlet = createLayoutOutlet();
+                layoutOutlet.layout = layout;
+                appendNode = layoutOutlet;
+                element = cloneElement;
+            }
+            const children = await _parseNode(routesNode, element, routes, map);
+            element.innerHTML = "";
+            element.appendChild(children);
+            fragment.appendChild(appendNode);
         }
-        return this;
+        else {
+            fragment.appendChild(childNode);
+        }
+    }
+    return fragment;
+}
+async function parse(routesNode) {
+    const map = new Map();
+    const fr = await _parseNode(routesNode, routesNode.template.content, [], map);
+    console.log(fr);
+    return fr;
+}
+
+/**
+ * AppRoutes - Root component for wc-router
+ *
+ * Container element that manages route definitions and navigation.
+ */
+class Router extends HTMLElement {
+    static _instance = null;
+    _outlet = null;
+    _template = null;
+    _routeChildNodes = [];
+    constructor() {
+        super();
+        if (Router._instance) {
+            raiseError(`${config.tagNames.router} can only be instantiated once.`);
+        }
+        Router._instance = this;
+    }
+    static get instance() {
+        if (!Router._instance) {
+            raiseError(`${config.tagNames.router} has not been instantiated.`);
+        }
+        return Router._instance;
+    }
+    static navigate(path) {
+        Router.instance.navigate(path);
+    }
+    _getOutlet() {
+        let outlet = document.querySelector(config.tagNames.outlet);
+        if (!outlet) {
+            outlet = createOutlet();
+            document.body.appendChild(outlet);
+        }
+        return outlet;
+    }
+    _getTemplate() {
+        const template = this.querySelector("template");
+        return template;
+    }
+    get outlet() {
+        if (!this._outlet) {
+            raiseError(`${config.tagNames.router} has no outlet.`);
+        }
+        return this._outlet;
+    }
+    get template() {
+        if (!this._template) {
+            raiseError(`${config.tagNames.router} has no template.`);
+        }
+        return this._template;
+    }
+    get routeChildNodes() {
+        return this._routeChildNodes;
+    }
+    navigate(path) {
+        if (window.navigation) {
+            window.navigation.navigate(path);
+        }
+        else {
+            history.pushState(null, '', path);
+            this._applyRoute(path);
+        }
+    }
+    _applyRoute(path) {
+        const matchResult = matchRoutes(this, path);
+        if (!matchResult) {
+            raiseError(`${config.tagNames.router} No route matched for path: ${path}`);
+        }
+        this.outlet.showRouteContent(matchResult.routes, matchResult.params);
+    }
+    _onNavigateFunc(navEvent) {
+        if (!navEvent.canIntercept ||
+            navEvent.hashChange ||
+            navEvent.downloadRequest !== null) {
+            return;
+        }
+        const routesNode = this;
+        navEvent.intercept({
+            async handler() {
+                const url = new URL(navEvent.destination.url);
+                routesNode._applyRoute(url.pathname);
+            }
+        });
+    }
+    _onNavigate = this._onNavigateFunc.bind(this);
+    async connectedCallback() {
+        this._outlet = this._getOutlet();
+        this._outlet.routesNode = this;
+        this._template = this._getTemplate();
+        if (!this._template) {
+            raiseError(`${config.tagNames.router} should have a <template> child element.`);
+        }
+        const fragment = await parse(this);
+        this._outlet.rootNode.appendChild(fragment);
+        this._applyRoute(window.location.pathname);
+        window.navigation?.addEventListener("navigate", this._onNavigate);
+    }
+    disconnectedCallback() {
+        window.navigation?.removeEventListener("navigate", this._onNavigate);
     }
 }
 
 function registerComponents() {
     // Register custom element
     if (!customElements.get(config.tagNames.layout)) {
-        customElements.define(config.tagNames.layout, WcLayout);
+        customElements.define(config.tagNames.layout, Layout);
     }
     if (!customElements.get(config.tagNames.layoutOutlet)) {
-        customElements.define(config.tagNames.layoutOutlet, WcLayoutOutlet);
+        customElements.define(config.tagNames.layoutOutlet, LayoutOutlet);
     }
     if (!customElements.get(config.tagNames.outlet)) {
-        customElements.define(config.tagNames.outlet, WcOutlet);
+        customElements.define(config.tagNames.outlet, Outlet);
     }
     if (!customElements.get(config.tagNames.route)) {
-        customElements.define(config.tagNames.route, WcRoute);
+        customElements.define(config.tagNames.route, Route);
     }
-    if (!customElements.get(config.tagNames.routes)) {
-        customElements.define(config.tagNames.routes, WcRoutes);
+    if (!customElements.get(config.tagNames.router)) {
+        customElements.define(config.tagNames.router, Router);
     }
 }
 

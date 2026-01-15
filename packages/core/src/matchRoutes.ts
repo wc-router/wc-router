@@ -1,11 +1,9 @@
-import { IRouteMatchResult } from "./components/types.js";
-import { WcRoute } from "./components/WcRoute.js";
-import { WcRoutes } from "./components/WcRoutes.js";
+import { IRoute, IRouteMatchResult, IRouter } from "./components/types.js";
 
 function _matchRoutes(
-  routesNode: WcRoutes, 
-  routeNode: WcRoute, 
-  routes: WcRoute[], 
+  routesNode: IRouter, 
+  routeNode: IRoute, 
+  routes: IRoute[], 
   path: string,
   results: IRouteMatchResult[]
 ): void {
@@ -20,8 +18,8 @@ function _matchRoutes(
   }
 }
 
-export function matchRoutes(routesNode: WcRoutes, path: string): IRouteMatchResult | null {
-  const routes: WcRoute[] = [];
+export function matchRoutes(routesNode: IRouter, path: string): IRouteMatchResult | null {
+  const routes: IRoute[] = [];
   const topLevelRoutes = routesNode.routeChildNodes;
   const results: IRouteMatchResult[] = [];
   for (const route of topLevelRoutes) {

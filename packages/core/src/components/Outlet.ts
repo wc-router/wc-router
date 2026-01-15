@@ -1,10 +1,10 @@
-import { WcRoute } from "./WcRoute.js";
-import { WcRoutes } from "./WcRoutes.js";
 import { config } from "../config.js";
+import { raiseError } from "../raiseError.js";
+import { IOutlet, IRoute, IRouter } from "./types.js";
 
-export class WcOutlet extends HTMLElement {
-  private _routesNode: WcRoutes | null = null;
-  private _lastRoutes: WcRoute[] = [];
+export class Outlet extends HTMLElement implements IOutlet {
+  private _routesNode: IRouter | null = null;
+  private _lastRoutes: IRoute[] = [];
   constructor() {
     super();
     if (config.enableShadowRoot) {
@@ -12,10 +12,13 @@ export class WcOutlet extends HTMLElement {
     }
   }
 
-  get routesNode(): WcRoutes | null {
+  get routesNode(): IRouter {
+    if (!this._routesNode) {
+      raiseError(`${config.tagNames.outlet} has no routesNode.`);
+    }
     return this._routesNode;
   }
-  set routesNode(value: WcRoutes | null) {
+  set routesNode(value: IRouter) {
     this._routesNode = value;
   }
 
@@ -26,15 +29,15 @@ export class WcOutlet extends HTMLElement {
     return this;
   }
 
-  showRouteContent(routes: WcRoute[], params: Record<string, string>): void {
+  showRouteContent(routes: IRoute[], params: Record<string, string>): void {
     // Hide previous routes
-    const routesSet = new Set<WcRoute>(routes);
+    const routesSet = new Set<IRoute>(routes);
     for (const route of this._lastRoutes) {
       if (!routesSet.has(route)) {
         route.hide();
       }
     }
-    const lastRouteSet = new Set<WcRoute>(this._lastRoutes);
+    const lastRouteSet = new Set<IRoute>(this._lastRoutes);
     for (const route of routes) {
       if (!lastRouteSet.has(route)) {
         route.show(params);
@@ -46,4 +49,8 @@ export class WcOutlet extends HTMLElement {
   connectedCallback() {
 //    console.log('WcOutlet connectedCallback');
   }
+}
+
+export function createOutlet(): Outlet {
+  return document.createElement(config.tagNames.outlet) as Outlet;
 }

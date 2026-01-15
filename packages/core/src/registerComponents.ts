@@ -1,25 +1,25 @@
-import { WcRoute } from './components/WcRoute';
-import { WcLayout } from './components/WcLayout';
-import { WcOutlet } from './components/WcOutlet';
-import { WcRoutes } from './components/WcRoutes';
-import { WcLayoutOutlet } from './components/WcLayoutOutlet';
+import { Route } from './components/Route';
+import { Layout } from './components/Layout';
+import { Outlet } from './components/Outlet';
+import { Router } from './components/Router';
+import { LayoutOutlet } from './components/LayoutOutlet';
 import { config } from './config';
 
 export function registerComponents() {
   // Register custom element
   if (!customElements.get(config.tagNames.layout)) {
-    customElements.define(config.tagNames.layout, WcLayout);
+    customElements.define(config.tagNames.layout, Layout);
   }
   if (!customElements.get(config.tagNames.layoutOutlet)) {
-    customElements.define(config.tagNames.layoutOutlet, WcLayoutOutlet);
+    customElements.define(config.tagNames.layoutOutlet, LayoutOutlet);
   }
   if (!customElements.get(config.tagNames.outlet)) {
-    customElements.define(config.tagNames.outlet, WcOutlet);
+    customElements.define(config.tagNames.outlet, Outlet);
   }
   if (!customElements.get(config.tagNames.route)) {
-    customElements.define(config.tagNames.route, WcRoute);
+    customElements.define(config.tagNames.route, Route);
   }
-  if (!customElements.get(config.tagNames.routes)) {
-    customElements.define(config.tagNames.routes, WcRoutes);
+  if (!customElements.get(config.tagNames.router)) {
+    customElements.define(config.tagNames.router, Router);
   }
 }

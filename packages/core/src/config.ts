@@ -3,7 +3,7 @@ import { IConfig } from "./types";
 export const config: IConfig = {
   tagNames: {
     route: "wc-route",
-    routes: "wc-routes",
+    router: "wc-router",
     outlet: "wc-outlet",
     layout: "wc-layout",
     layoutOutlet: "wc-layout-outlet"

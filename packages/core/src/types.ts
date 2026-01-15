@@ -1,7 +1,7 @@
 
 export interface ITagNames {
   route: string;
-  routes: string;
+  router: string;
   outlet: string;
   layout: string;
   layoutOutlet: string;

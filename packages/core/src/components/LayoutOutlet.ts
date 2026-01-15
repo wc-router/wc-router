@@ -1,27 +1,31 @@
-import { WcLayout } from "./WcLayout.js";
 import { config } from "../config.js";
 import { raiseError } from "../raiseError.js";
+import { ILayout, ILayoutOutlet } from "./types.js";
 
-export class WcLayoutOutlet extends HTMLElement {
-  private _layout: WcLayout | null = null;
+export class LayoutOutlet extends HTMLElement implements ILayoutOutlet {
+  private _layout: (ILayout & Pick<Element,'childNodes'>) | null = null;
   private _isInitialized: boolean = false;
   private _layoutChildNodes: Node[] = [];
   constructor() {
     super();
   }
 
-  get layout(): WcLayout {
+  get layout(): ILayout {
     if (!this._layout) {
       raiseError(`${config.tagNames.layoutOutlet} has no layout.`);
     }
     return this._layout;
   }
-  set layout(value: WcLayout) {
+  set layout(value: ILayout) {
     this._layout = value;
     this.setAttribute('name', value.name);
   }
   
-  async initialize(): Promise<void> {
+  get name(): string {
+    return this.layout.name;
+  }
+
+  private async _initialize(): Promise<void> {
     if (this._isInitialized) {
       return;
     }
@@ -80,14 +84,11 @@ export class WcLayoutOutlet extends HTMLElement {
   } 
 
   async connectedCallback() {
-    await this.initialize();
+    await this._initialize();
 //    console.log(`${config.tagNames.layoutOutlet} connectedCallback`);
   }
+}
 
-  get rootNode(): HTMLElement | ShadowRoot {
-    if (this.shadowRoot) {
-      return this.shadowRoot;
-    }
-    return this;
-  }
+export function createLayoutOutlet(): LayoutOutlet {
+  return document.createElement(config.tagNames.layoutOutlet) as LayoutOutlet;
 }

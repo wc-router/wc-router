@@ -1,25 +1,19 @@
 import { getUUID } from "../getUUID.js";
 import { config } from "../config.js";
 import { raiseError } from "../raiseError.js";
+import { ILayout } from "./types.js";
 
 const cache = new Map<string, string>();
 
-export class WcLayout extends HTMLElement {
-  private _template: HTMLTemplateElement;
+export class Layout extends HTMLElement implements ILayout {
   private _uuid: string = getUUID();
-  private _placeHolder: Comment | null = null;
   private _name: string = '';
   constructor() {
     super();
-    this._template = document.createElement('template');
     this._name = this.getAttribute('name') || '';
   }
 
-  loadTemplateFromCache(source: string): string | undefined {
-    return cache.get(source);
-  }
-
-  async loadTemplateFromSource(source: string): Promise<string | null> {
+  private async _loadTemplateFromSource(source: string): Promise<string | null> {
     try {
       const response = await fetch(source);
       if (!response.ok) {
@@ -33,7 +27,7 @@ export class WcLayout extends HTMLElement {
     }
   }
 
-  loadTemplateFromDocument(id: string): string | null {
+  private _loadTemplateFromDocument(id: string): string | null {
     const element = document.getElementById(`${id}`) as HTMLElement | null;
     if (element) {
       if (element instanceof HTMLTemplateElement) {
@@ -54,11 +48,11 @@ export class WcLayout extends HTMLElement {
       if (cache.has(source)) {
         template.innerHTML = cache.get(source) || '';
       } else {
-        template.innerHTML = await this.loadTemplateFromSource(source) || '';
+        template.innerHTML = await this._loadTemplateFromSource(source) || '';
         cache.set(source, template.innerHTML);
       }
     } else if (layoutId) {
-      const templateContent = this.loadTemplateFromDocument(layoutId);
+      const templateContent = this._loadTemplateFromDocument(layoutId);
       if (templateContent) {
         template.innerHTML = templateContent;
       } else {
@@ -70,14 +64,6 @@ export class WcLayout extends HTMLElement {
 
   get uuid(): string {
     return this._uuid;
-  }
-
-  get placeHolder(): Comment | null {
-    return this._placeHolder;
-  }
-
-  set placeHolder(value: Comment | null) {
-    this._placeHolder = value;
   }
 
   get enableShadowRoot(): boolean {
