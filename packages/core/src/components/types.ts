@@ -54,3 +54,11 @@ export interface ILayoutOutlet {
   layout: ILayout;
   readonly name: string;
 }
+
+export interface ILink {
+  readonly uuid: string;
+  readonly commentNode: Comment;
+  readonly router: IRouter;
+}
+
+export type BindType = "props" | "states" | "attr" | "";

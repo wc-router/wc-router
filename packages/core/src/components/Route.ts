@@ -1,7 +1,9 @@
 import { getUUID } from "../getUUID.js";
 import { config } from "../config.js";
 import { raiseError } from "../raiseError.js";
-import { IRouteMatchResult, IRoute, IRouter } from "./types.js";
+import { IRouteMatchResult, IRoute, IRouter, BindType } from "./types.js";
+
+const bindTypeSet: Set<BindType> = new Set([ "props", "states", "attr", "" ]);
 
 export class Route extends HTMLElement implements IRoute {
   private _path: string = '';
@@ -212,6 +214,39 @@ export class Route extends HTMLElement implements IRoute {
     return this._childIndex;
   }
 
+  private _setParams(element: Element, params: Record<string, string>) {
+    if (!element.hasAttribute('data-bind')) {
+      raiseError(`${config.tagNames.route} child element has no 'data-bind' attribute.`);
+    }
+    const bindTypeText = element.getAttribute('data-bind') || '';
+    if (!bindTypeSet.has(bindTypeText as BindType)) {
+      raiseError(`${config.tagNames.route} child element has invalid 'data-bind' attribute: ${bindTypeText}`);
+    }
+    const bindType = bindTypeText as BindType;
+    for(const [key, value] of Object.entries(params)) {
+      switch(bindType) {
+        case "props":
+          (element as any).props = {
+            ...(element as any).props,
+            [key]: value
+          };
+          break;
+        case "states":
+          (element as any).states = {
+            ...(element as any).states,
+            [key]: value
+          };
+          break;
+        case "attr":
+          element.setAttribute(key, value);
+          break;
+        case "":
+          (element as any)[key] = value;
+          break;
+      }
+    }
+  }
+
   show(params: Record<string, string>) {
     this._params = {};
     for(const key of this._paramNames) {
@@ -224,6 +259,15 @@ export class Route extends HTMLElement implements IRoute {
         parentNode?.insertBefore(node, nextSibling);
       } else {
         parentNode?.appendChild(node);
+      }
+      if (node.nodeType === Node.ELEMENT_NODE) {
+        const element = node as Element;
+        element.querySelectorAll('[data-bind]').forEach((e) => {
+          this._setParams(e, this._params);
+        });
+        if (element.hasAttribute('data-bind')) {
+          this._setParams(element, this._params);
+        }
       }
     }
   }

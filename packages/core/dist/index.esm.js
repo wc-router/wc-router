@@ -25,6 +25,7 @@ function raiseError(message) {
     throw new Error(`[wc-router] ${message}`);
 }
 
+const bindTypeSet = new Set(["props", "states", "attr", ""]);
 class Route extends HTMLElement {
     _path = '';
     _routeParentNode = null;
@@ -213,6 +214,38 @@ class Route extends HTMLElement {
     get childIndex() {
         return this._childIndex;
     }
+    _setParams(element, params) {
+        if (!element.hasAttribute('data-bind')) {
+            raiseError(`${config.tagNames.route} child element has no 'data-bind' attribute.`);
+        }
+        const bindTypeText = element.getAttribute('data-bind') || '';
+        if (!bindTypeSet.has(bindTypeText)) {
+            raiseError(`${config.tagNames.route} child element has invalid 'data-bind' attribute: ${bindTypeText}`);
+        }
+        const bindType = bindTypeText;
+        for (const [key, value] of Object.entries(params)) {
+            switch (bindType) {
+                case "props":
+                    element.props = {
+                        ...element.props,
+                        [key]: value
+                    };
+                    break;
+                case "states":
+                    element.states = {
+                        ...element.states,
+                        [key]: value
+                    };
+                    break;
+                case "attr":
+                    element.setAttribute(key, value);
+                    break;
+                case "":
+                    element[key] = value;
+                    break;
+            }
+        }
+    }
     show(params) {
         this._params = {};
         for (const key of this._paramNames) {
@@ -226,6 +259,15 @@ class Route extends HTMLElement {
             }
             else {
                 parentNode?.appendChild(node);
+            }
+            if (node.nodeType === Node.ELEMENT_NODE) {
+                const element = node;
+                element.querySelectorAll('[data-bind]').forEach((e) => {
+                    this._setParams(e, this._params);
+                });
+                if (element.hasAttribute('data-bind')) {
+                    this._setParams(element, this._params);
+                }
             }
         }
     }
@@ -678,17 +720,86 @@ class Router extends HTMLElement {
 }
 
 class Link extends HTMLElement {
+    _childNodeArray;
+    _uuid = getUUID();
+    _commentNode;
+    _path = "";
+    _router = null;
+    _anchorElement = null;
     constructor() {
         super();
-        this.addEventListener('click', (event) => {
-            event.preventDefault();
-            event.stopPropagation();
-            const href = this.getAttribute('to') || '';
-            if (href) {
-                Router.navigate(href);
-            }
-        });
+        this._childNodeArray = Array.from(this.childNodes);
+        this._commentNode = document.createComment(`@@link:${this._uuid}`);
+        this.replaceWith(this._commentNode);
+        this._path = this.getAttribute('to') || '';
+        if (this._path === '') {
+            raiseError(`${config.tagNames.link} requires a 'to' attribute.`);
+        }
     }
+    get uuid() {
+        return this._uuid;
+    }
+    get commentNode() {
+        return this._commentNode;
+    }
+    get router() {
+        if (this._router) {
+            return this._router;
+        }
+        const router = document.querySelector(config.tagNames.router);
+        if (router) {
+            return (this._router = router);
+        }
+        raiseError(`${config.tagNames.link} is not connected to a router.`);
+    }
+    connectedCallback() {
+        const parentNode = this._commentNode.parentNode;
+        if (!parentNode) {
+            raiseError(`${config.tagNames.link} is not connected to the DOM.`);
+        }
+        const nextSibling = this._commentNode.nextSibling;
+        const link = document.createElement('a');
+        if (this._path.startsWith('/')) {
+            link.href = this.router.basename + this._path;
+        }
+        else {
+            link.href = new URL(this._path).toString();
+        }
+        for (const childNode of this._childNodeArray) {
+            link.appendChild(childNode);
+        }
+        if (nextSibling) {
+            parentNode.insertBefore(link, nextSibling);
+        }
+        else {
+            parentNode.appendChild(link);
+        }
+        this._anchorElement = link;
+        // ロケーション変更を監視
+        window.navigation?.addEventListener('currententrychange', this._updateActiveState);
+        this._updateActiveState();
+    }
+    disconnectedCallback() {
+        window.navigation?.removeEventListener('currententrychange', this._updateActiveState);
+        if (this._anchorElement) {
+            this._anchorElement.remove();
+        }
+        for (const childNode of this._childNodeArray) {
+            childNode.parentNode?.removeChild(childNode);
+        }
+    }
+    _updateActiveState = () => {
+        const currentPath = new URL(window.location.href).pathname;
+        const linkPath = this.router.basename + this._path;
+        if (this._anchorElement) {
+            if (currentPath === linkPath) {
+                this._anchorElement.classList.add('active');
+            }
+            else {
+                this._anchorElement.classList.remove('active');
+            }
+        }
+    };
 }
 
 function registerComponents() {
