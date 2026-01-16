@@ -11,7 +11,7 @@ export class Route extends HTMLElement implements IRoute {
   private _path: string = '';
   private _routeParentNode: IRoute | null = null;
   private _routeChildNodes: IRoute[] = [];
-  private _routesNode: IRouter | null = null;
+  private _routerNode: IRouter | null = null;
   private _uuid: string = getUUID();
   private _placeHolder: Comment | null = null;
   private _childNodeArray: Node[] = [];
@@ -29,6 +29,7 @@ export class Route extends HTMLElement implements IRoute {
   private _resolveSetGuardHandler: (() => void) | null = null;
   private _guardFallbackPath: string = '';
   private _initialized: boolean = false;
+  private _isFallbackRoute: boolean = false;
 
   constructor() {
     super();
@@ -44,8 +45,8 @@ export class Route extends HTMLElement implements IRoute {
       this._childIndex = value.routeChildNodes.length - 1;
     } else {
       // Top-level route
-      this.routesNode.routeChildNodes.push(this);
-      this._childIndex = this.routesNode.routeChildNodes.length - 1;
+      this.routerNode.routeChildNodes.push(this);
+      this._childIndex = this.routerNode.routeChildNodes.length - 1;
     }
   }
 
@@ -53,14 +54,17 @@ export class Route extends HTMLElement implements IRoute {
     return this._routeChildNodes;
   }
 
-  get routesNode(): IRouter {
-    if (!this._routesNode) {
-      raiseError(`${config.tagNames.route} has no routesNode.`);
+  get routerNode(): IRouter {
+    if (!this._routerNode) {
+      raiseError(`${config.tagNames.route} has no routerNode.`);
     }
-    return this._routesNode;
+    return this._routerNode;
   }
-  set routesNode(value: IRouter) {
-    this._routesNode = value;
+  set routerNode(value: IRouter) {
+    this._routerNode = value;
+    if (this._isFallbackRoute) {
+      this.routerNode.fallbackRoute = this;
+    }
   }
 
   get path(): string {
@@ -286,12 +290,13 @@ export class Route extends HTMLElement implements IRoute {
     }
     if (this.hasAttribute('path')) {
       this._path = this.getAttribute('path') || '';
+    } else if (this.hasAttribute('index')) {
+      this._path = '';
+    } else if (this.hasAttribute('fallback')) {
+      this._path = '';
+      this._isFallbackRoute = true;
     } else {
-      if (this.hasAttribute('index')) {
-        this._path = '';
-      } else {
-        raiseError(`${config.tagNames.route} should have a "path" or "index" attribute.`);
-      }
+      raiseError(`${config.tagNames.route} should have a "path" or "index" attribute.`);
     }
     const segments = this._path.split('/');
     const patternSegments = [];

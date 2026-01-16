@@ -29,7 +29,7 @@ async function _parseNode(
         cloneElement.appendChild(childFragment);
         const route = cloneElement;
         route.initialize();
-        route.routesNode = routesNode;
+        route.routerNode = routesNode;
         route.routeParentNode = routeParentNode;
         route.placeHolder = document.createComment(`@@route:${route.uuid}`);
         routes.push(route);

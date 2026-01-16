@@ -99,9 +99,9 @@ describe('Route', () => {
       const childRoute = document.createElement('wc-route') as Route;
       childRoute.setAttribute('path', 'child');
 
-      parentRoute.routesNode = router;
+      parentRoute.routerNode = router;
       parentRoute.initialize();
-      childRoute.routesNode = router;
+      childRoute.routerNode = router;
       childRoute.initialize();
 
       childRoute.routeParentNode = parentRoute;
@@ -117,7 +117,7 @@ describe('Route', () => {
 
       const route = document.createElement('wc-route') as Route;
       route.setAttribute('path', '/test');
-      route.routesNode = router;
+      route.routerNode = router;
       route.initialize();
       route.routeParentNode = null;
 
@@ -125,23 +125,23 @@ describe('Route', () => {
     });
   });
 
-  describe('routesNode', () => {
-    it('routesNodeが設定されていない場合、getterでエラーを投げること', () => {
+  describe('routerNode', () => {
+    it('routerNodeが設定されていない場合、getterでエラーを投げること', () => {
       const route = document.createElement('wc-route') as Route;
       route.setAttribute('path', '/test');
-      expect(() => route.routesNode).toThrow('[wc-router] wc-route has no routesNode.');
+      expect(() => route.routerNode).toThrow('[wc-router] wc-route has no routerNode.');
     });
 
-    it('routesNodeをsetterで設定し、getterで取得できること', () => {
+    it('routerNodeをsetterで設定し、getterで取得できること', () => {
       const router = document.createElement('wc-router') as Router;
       document.body.appendChild(router);
 
       const route = document.createElement('wc-route') as Route;
       route.setAttribute('path', '/test');
-      route.routesNode = router;
+      route.routerNode = router;
       route.initialize();
 
-      expect(route.routesNode).toBe(router);
+      expect(route.routerNode).toBe(router);
     });
   });
 
@@ -171,7 +171,7 @@ describe('Route', () => {
       const route = document.createElement('wc-route') as Route;
       route.setAttribute('path', 'relative');
       document.body.appendChild(route);
-      route.routesNode = router;
+      route.routerNode = router;
       route.initialize();
 
       expect(() => {
@@ -186,13 +186,13 @@ describe('Route', () => {
       const parentRoute = document.createElement('wc-route') as Route;
       parentRoute.setAttribute('path', '/parent');
       document.body.appendChild(parentRoute);
-      parentRoute.routesNode = router;
+      parentRoute.routerNode = router;
       parentRoute.initialize();
 
       const childRoute = document.createElement('wc-route') as Route;
       childRoute.setAttribute('path', '/absolute');
       document.body.appendChild(childRoute);
-      childRoute.routesNode = router;
+      childRoute.routerNode = router;
       childRoute.initialize();
       childRoute.routeParentNode = parentRoute;
 
@@ -209,7 +209,7 @@ describe('Route', () => {
 
       const route = document.createElement('wc-route') as Route;
       route.setAttribute('path', '/test');
-      route.routesNode = router;
+      route.routerNode = router;
       route.initialize();
 
       expect(route.absolutePath).toBe('/test');
@@ -221,12 +221,12 @@ describe('Route', () => {
 
       const parentRoute = document.createElement('wc-route') as Route;
       parentRoute.setAttribute('path', '/parent');
-      parentRoute.routesNode = router;
+      parentRoute.routerNode = router;
       parentRoute.initialize();
 
       const childRoute = document.createElement('wc-route') as Route;
       childRoute.setAttribute('path', 'child');
-      childRoute.routesNode = router;
+      childRoute.routerNode = router;
       childRoute.initialize();
       childRoute.routeParentNode = parentRoute;
 
@@ -239,12 +239,12 @@ describe('Route', () => {
 
       const parentRoute = document.createElement('wc-route') as Route;
       parentRoute.setAttribute('path', '/parent/');
-      parentRoute.routesNode = router;
+      parentRoute.routerNode = router;
       parentRoute.initialize();
 
       const childRoute = document.createElement('wc-route') as Route;
       childRoute.setAttribute('path', 'child');
-      childRoute.routesNode = router;
+      childRoute.routerNode = router;
       childRoute.initialize();
       childRoute.routeParentNode = parentRoute;
 
@@ -315,7 +315,7 @@ describe('Route', () => {
 
       const route = document.createElement('wc-route') as Route;
       route.setAttribute('path', '/users/:id');
-      route.routesNode = router;
+      route.routerNode = router;
       route.initialize();
 
       const result = route.testPath('/users/123');
@@ -330,7 +330,7 @@ describe('Route', () => {
 
       const route = document.createElement('wc-route') as Route;
       route.setAttribute('path', '/users/:id');
-      route.routesNode = router;
+      route.routerNode = router;
       route.initialize();
 
       const first = route.testPath('/users/111');
@@ -346,7 +346,7 @@ describe('Route', () => {
 
       const route = document.createElement('wc-route') as Route;
       route.setAttribute('path', '/users/:id');
-      route.routesNode = router;
+      route.routerNode = router;
       route.initialize();
 
       const result = route.testPath('/posts/123');
@@ -359,7 +359,7 @@ describe('Route', () => {
 
       const route = document.createElement('wc-route') as Route;
       route.setAttribute('path', '/users/:userId/posts/:postId');
-      route.routesNode = router;
+      route.routerNode = router;
       route.initialize();
 
       const result = route.testPath('/users/123/posts/456');
@@ -374,7 +374,7 @@ describe('Route', () => {
 
       const route = document.createElement('wc-route') as Route;
       route.setAttribute('path', '/test');
-      route.routesNode = router;
+      route.routerNode = router;
       route.initialize();
 
       expect(route.routes).toEqual([route]);
@@ -386,12 +386,12 @@ describe('Route', () => {
 
       const parentRoute = document.createElement('wc-route') as Route;
       parentRoute.setAttribute('path', '/parent');
-      parentRoute.routesNode = router;
+      parentRoute.routerNode = router;
       parentRoute.initialize();
 
       const childRoute = document.createElement('wc-route') as Route;
       childRoute.setAttribute('path', 'child');
-      childRoute.routesNode = router;
+      childRoute.routerNode = router;
       childRoute.initialize();
       childRoute.routeParentNode = parentRoute;
 
@@ -406,7 +406,7 @@ describe('Route', () => {
 
       const route = document.createElement('wc-route') as Route;
       route.setAttribute('path', '/users/:id');
-      route.routesNode = router;
+      route.routerNode = router;
       route.initialize();
 
       expect(route.absolutePatternText).toBe('\\/users\\/([^\\/]+)');
@@ -418,12 +418,12 @@ describe('Route', () => {
 
       const parentRoute = document.createElement('wc-route') as Route;
       parentRoute.setAttribute('path', '/parent');
-      parentRoute.routesNode = router;
+      parentRoute.routerNode = router;
       parentRoute.initialize();
 
       const childRoute = document.createElement('wc-route') as Route;
       childRoute.setAttribute('path', 'child/:id');
-      childRoute.routesNode = router;
+      childRoute.routerNode = router;
       childRoute.initialize();
       childRoute.routeParentNode = parentRoute;
 
@@ -436,12 +436,12 @@ describe('Route', () => {
 
       const parentRoute = document.createElement('wc-route') as Route;
       parentRoute.setAttribute('path', '/parent/');
-      parentRoute.routesNode = router;
+      parentRoute.routerNode = router;
       parentRoute.initialize();
 
       const childRoute = document.createElement('wc-route') as Route;
       childRoute.setAttribute('path', 'child');
-      childRoute.routesNode = router;
+      childRoute.routerNode = router;
       childRoute.initialize();
       childRoute.routeParentNode = parentRoute;
 
@@ -456,7 +456,7 @@ describe('Route', () => {
 
       const route = document.createElement('wc-route') as Route;
       route.setAttribute('path', '/users/:id');
-      route.routesNode = router;
+      route.routerNode = router;
       route.initialize();
 
       expect(route.absoluteParamNames).toEqual(['id']);
@@ -468,12 +468,12 @@ describe('Route', () => {
 
       const parentRoute = document.createElement('wc-route') as Route;
       parentRoute.setAttribute('path', '/users/:userId');
-      parentRoute.routesNode = router;
+      parentRoute.routerNode = router;
       parentRoute.initialize();
 
       const childRoute = document.createElement('wc-route') as Route;
       childRoute.setAttribute('path', 'posts/:postId');
-      childRoute.routesNode = router;
+      childRoute.routerNode = router;
       childRoute.initialize();
       childRoute.routeParentNode = parentRoute;
 
@@ -498,7 +498,7 @@ describe('Route', () => {
 
       const route = document.createElement('wc-route') as Route;
       route.setAttribute('path', '/users/:id');
-      route.routesNode = router;
+      route.routerNode = router;
       route.initialize();
 
       expect(route.absoluteWeight).toBe(4);
@@ -510,12 +510,12 @@ describe('Route', () => {
 
       const parentRoute = document.createElement('wc-route') as Route;
       parentRoute.setAttribute('path', '/parent');
-      parentRoute.routesNode = router;
+      parentRoute.routerNode = router;
       parentRoute.initialize();
 
       const childRoute = document.createElement('wc-route') as Route;
       childRoute.setAttribute('path', 'child');
-      childRoute.routesNode = router;
+      childRoute.routerNode = router;
       childRoute.routeParentNode = parentRoute;
       childRoute.initialize();
 
@@ -528,7 +528,7 @@ describe('Route', () => {
 
       const route = document.createElement('wc-route') as Route;
       route.setAttribute('path', '/test');
-      route.routesNode = router;
+      route.routerNode = router;
       route.initialize();
 
       const weight1 = route.absoluteWeight;
@@ -604,7 +604,7 @@ describe('Route', () => {
 
       const route = document.createElement('wc-route') as Route;
       route.setAttribute('path', '/users/:id');
-      route.routesNode = router;
+      route.routerNode = router;
       route.initialize();
 
       const span = document.createElement('span');
@@ -628,7 +628,7 @@ describe('Route', () => {
 
       const route = document.createElement('wc-route') as Route;
       route.setAttribute('path', '/users/:id');
-      route.routesNode = router;
+      route.routerNode = router;
       route.initialize();
 
       const div = document.createElement('div');
@@ -653,7 +653,7 @@ describe('Route', () => {
 
       const route = document.createElement('wc-route') as Route;
       route.setAttribute('path', '/test');
-      route.routesNode = router;
+      route.routerNode = router;
       route.initialize();
 
       const span = document.createElement('span');
@@ -677,7 +677,7 @@ describe('Route', () => {
 
       const route = document.createElement('wc-route') as Route;
       route.setAttribute('path', '/test');
-      route.routesNode = router;
+      route.routerNode = router;
       route.initialize();
 
       const span = document.createElement('span');
@@ -701,7 +701,7 @@ describe('Route', () => {
 
       const route = document.createElement('wc-route') as Route;
       route.setAttribute('path', '/users/:id');
-      route.routesNode = router;
+      route.routerNode = router;
       route.initialize();
 
       const span = document.createElement('span');
@@ -728,7 +728,7 @@ describe('Route', () => {
 
       const route = document.createElement('wc-route') as Route;
       route.setAttribute('path', '/users/:id');
-      route.routesNode = router;
+      route.routerNode = router;
       route.initialize();
 
       const placeholder = document.createComment('placeholder');
@@ -747,7 +747,7 @@ describe('Route', () => {
 
       const route = document.createElement('wc-route') as Route;
       route.setAttribute('path', '/users/:id');
-      route.routesNode = router;
+      route.routerNode = router;
       route.initialize();
 
       const placeholder = document.createComment('placeholder');
@@ -786,7 +786,7 @@ describe('Route', () => {
       document.body.appendChild(router);
       
       const route = document.createElement('wc-route') as Route;
-      route.routesNode = router;
+      route.routerNode = router;
       
       let errorThrown = false;
       try {
@@ -798,13 +798,27 @@ describe('Route', () => {
       expect(errorThrown).toBe(true);
     });
 
+    it('fallback属性がある場合、fallbackRouteとして登録されること', () => {
+      const router = document.createElement('wc-router') as Router;
+      document.body.appendChild(router);
+
+      const route = document.createElement('wc-route') as Route;
+      route.setAttribute('fallback', '');
+
+      route.initialize();
+      route.routerNode = router;
+
+      expect(route.path).toBe('');
+      expect(router.fallbackRoute).toBe(route);
+    });
+
     it('path属性が空の場合は空文字を設定すること', () => {
       const router = document.createElement('wc-router') as any;
       document.body.appendChild(router);
 
       const route = document.createElement('wc-route') as Route;
       route.setAttribute('path', '');
-      route.routesNode = router;
+      route.routerNode = router;
 
       route.initialize();
 
@@ -818,7 +832,7 @@ describe('Route', () => {
       const route = document.createElement('wc-route') as Route;
       route.setAttribute('path', '/test');
       route.setAttribute('guard', '');
-      route.routesNode = router;
+      route.routerNode = router;
 
       route.initialize();
 
@@ -831,7 +845,7 @@ describe('Route', () => {
 
       const route = document.createElement('wc-route') as Route;
       route.setAttribute('path', '/before');
-      route.routesNode = router;
+      route.routerNode = router;
 
       route.initialize();
       route.setAttribute('path', '/after');
@@ -850,7 +864,7 @@ describe('Route', () => {
 
       const route = document.createElement('wc-route') as Route;
       route.setAttribute('path', '/test/:id');
-      route.routesNode = router;
+      route.routerNode = router;
       route.initialize();
 
       const div = document.createElement('div');
@@ -873,7 +887,7 @@ describe('Route', () => {
 
       const route = document.createElement('wc-route') as Route;
       route.setAttribute('path', '/test/:id');
-      route.routesNode = router;
+      route.routerNode = router;
       route.initialize();
 
       const container = document.createElement('div');
@@ -899,7 +913,7 @@ describe('Route', () => {
 
       const route = document.createElement('wc-route') as Route;
       route.setAttribute('path', '/test/:id');
-      route.routesNode = router;
+      route.routerNode = router;
       route.initialize();
 
       const layoutOutlet = document.createElement('wc-layout-outlet') as LayoutOutlet;
@@ -923,7 +937,7 @@ describe('Route', () => {
 
       const route = document.createElement('wc-route') as Route;
       route.setAttribute('path', '/test');
-      route.routesNode = router;
+      route.routerNode = router;
       route.initialize();
 
       const placeholder = document.createComment('placeholder');

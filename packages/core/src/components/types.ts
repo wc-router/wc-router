@@ -19,7 +19,7 @@ export type ILayout = _ILayout & Pick<Element,'childNodes'>;
 export interface IRoute {
   routeParentNode: IRoute | null;
   readonly routeChildNodes: IRoute[];
-  routesNode: IRouter;
+  routerNode: IRouter;
   readonly path: string;
   readonly isRelative: boolean;
   readonly absolutePath: string;
@@ -49,6 +49,7 @@ export interface IRouter {
   readonly outlet: IOutlet;
   readonly template: HTMLTemplateElement;
   readonly routeChildNodes: IRoute[];
+  fallbackRoute: IRoute | null;
   path: string;
   navigate(path: string): Promise<void>;
 }

@@ -14,9 +14,18 @@ export async function applyRoute(
   const path = fullPath.startsWith(basename)
     ? fullPath.slice(basename.length)
     : fullPath;
-  const matchResult = matchRoutes(routerNode, path);
+  let matchResult = matchRoutes(routerNode, path);
   if (!matchResult) {
-    raiseError(`${config.tagNames.router} No route matched for path: ${path}`);
+    if (routerNode.fallbackRoute) {
+      matchResult = {
+        routes: [routerNode.fallbackRoute],
+        params: {},
+        path: path,
+        lastPath: lastPath
+      };
+    } else {
+      raiseError(`${config.tagNames.router} No route matched for path: ${path}`);
+    }
   }
   matchResult.lastPath = lastPath;
   const lastRoutes = outlet.lastRoutes;

@@ -18,6 +18,7 @@ export class Router extends HTMLElement implements IRouter {
   private _basename: string = '';
   private _path: string = '';
   private _initialized: boolean = false;
+  private _fallbackRoute: IRoute | null = null;
 
   constructor() {
     super();
@@ -104,6 +105,16 @@ export class Router extends HTMLElement implements IRouter {
    */
   set path(value: string) {
     this._path = value;
+  }
+
+  get fallbackRoute(): IRoute | null {
+    return this._fallbackRoute;
+  }
+  /**
+   * Routeのfallback属性がある場合にそのルートを設定します。
+   */
+  set fallbackRoute(value: IRoute | null) {
+    this._fallbackRoute = value;
   }
 
   async navigate(path: string): Promise<void> {

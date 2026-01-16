@@ -75,6 +75,25 @@ describe('applyRoute', () => {
     }).rejects.toThrow('No route matched for path');
   });
 
+  it('マッチするルートがない場合はfallbackRouteを使用すること', async () => {
+    const router = document.createElement('wc-router') as Router;
+    document.body.appendChild(router);
+
+    const fallbackRoute = document.createElement('wc-route') as Route;
+    router.fallbackRoute = fallbackRoute;
+
+    const outlet = document.createElement('wc-outlet') as Outlet;
+
+    vi.spyOn(matchRoutesModule, 'matchRoutes').mockReturnValue(null);
+    const showSpy = vi.spyOn(showRouteContentModule, 'showRouteContent').mockResolvedValue(undefined);
+
+    await applyRoute(router, outlet, '/nonexistent', '/prev');
+
+    expect(showSpy).toHaveBeenCalled();
+    expect(outlet.lastRoutes).toEqual([fallbackRoute]);
+    expect(router.path).toBe('/nonexistent');
+  });
+
   it('showRouteContent成功後にrouterとoutletの状態を更新すること', async () => {
     const router = document.createElement('wc-router') as Router;
     document.body.appendChild(router);
