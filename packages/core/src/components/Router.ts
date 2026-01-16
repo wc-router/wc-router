@@ -4,6 +4,7 @@ import { config } from "../config.js";
 import { raiseError } from "../raiseError.js";
 import { IOutlet, IRoute, IRouter } from "./types.js";
 import { applyRoute } from "../applyRoute.js";
+import { getNavigation } from "../Navigation.js";
 
 /**
  * AppRoutes - Root component for wc-router
@@ -119,8 +120,9 @@ export class Router extends HTMLElement implements IRouter {
 
   async navigate(path: string): Promise<void> {
     const fullPath = this._basename + path;
-    if ((window as any).navigation) {
-      (window as any).navigation.navigate(fullPath);
+    const navigation = getNavigation();
+    if (navigation?.navigate) {
+      navigation.navigate(fullPath);
     } else {
       history.pushState(null, '', fullPath);
       await applyRoute(this, this.outlet, fullPath, this._path);
@@ -175,10 +177,10 @@ export class Router extends HTMLElement implements IRouter {
     if (!this._initialized) {
       await this._initialize();
     }
-    ((window as any).navigation as any)?.addEventListener("navigate", this._onNavigate);
+    getNavigation()?.addEventListener("navigate", this._onNavigate);
   }
 
   disconnectedCallback() {
-    ((window as any).navigation as any)?.removeEventListener("navigate", this._onNavigate);
+    getNavigation()?.removeEventListener("navigate", this._onNavigate);
   }
 }

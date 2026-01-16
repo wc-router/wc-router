@@ -812,6 +812,24 @@ describe('Route', () => {
       expect(router.fallbackRoute).toBe(route);
     });
 
+    it('fallbackRouteが既に設定されている場合はエラーを投げること', () => {
+      const router = document.createElement('wc-router') as Router;
+      document.body.appendChild(router);
+
+      const first = document.createElement('wc-route') as Route;
+      first.setAttribute('fallback', '');
+      first.initialize();
+      first.routerNode = router;
+
+      const second = document.createElement('wc-route') as Route;
+      second.setAttribute('fallback', '');
+      second.initialize();
+
+      expect(() => {
+        second.routerNode = router;
+      }).toThrow('[wc-router] wc-router can have only one fallback route.');
+    });
+
     it('path属性が空の場合は空文字を設定すること', () => {
       const router = document.createElement('wc-router') as any;
       document.body.appendChild(router);

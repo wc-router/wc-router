@@ -160,7 +160,11 @@ describe('Router', () => {
     it('navigation APIがある場合はnavigation.navigateを呼ぶこと', async () => {
       const router = document.createElement('wc-router') as Router;
       (router as any)._basename = '/base';
-      const navigation = { navigate: vi.fn() };
+      const navigation = {
+        navigate: vi.fn(),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn()
+      };
       (window as any).navigation = navigation;
 
       await router.navigate('/path');
@@ -293,7 +297,7 @@ describe('Router', () => {
       const router = document.createElement('wc-router') as Router;
       (router as any)._initialize = vi.fn().mockResolvedValue(undefined);
 
-      const navigation = { addEventListener: vi.fn() };
+      const navigation = { addEventListener: vi.fn(), removeEventListener: vi.fn() };
       (window as any).navigation = navigation;
 
       await router.connectedCallback();
@@ -307,7 +311,7 @@ describe('Router', () => {
       (router as any)._initialized = true;
       (router as any)._initialize = vi.fn().mockResolvedValue(undefined);
 
-      const navigation = { addEventListener: vi.fn() };
+      const navigation = { addEventListener: vi.fn(), removeEventListener: vi.fn() };
       (window as any).navigation = navigation;
 
       await router.connectedCallback();
@@ -318,7 +322,7 @@ describe('Router', () => {
 
     it('disconnectedCallbackでnavigateイベントを解除すること', () => {
       const router = document.createElement('wc-router') as Router;
-      const navigation = { removeEventListener: vi.fn() };
+      const navigation = { addEventListener: vi.fn(), removeEventListener: vi.fn() };
       (window as any).navigation = navigation;
 
       router.disconnectedCallback();

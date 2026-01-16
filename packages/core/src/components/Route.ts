@@ -63,6 +63,9 @@ export class Route extends HTMLElement implements IRoute {
   set routerNode(value: IRouter) {
     this._routerNode = value;
     if (this._isFallbackRoute) {
+      if (this._routerNode.fallbackRoute) {
+        raiseError(`${config.tagNames.router} can have only one fallback route.`);
+      }
       this.routerNode.fallbackRoute = this;
     }
   }

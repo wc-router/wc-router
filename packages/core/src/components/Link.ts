@@ -1,6 +1,7 @@
 import { config } from "../config";
 import { getUUID } from "../getUUID";
 import { raiseError } from "../raiseError";
+import { getNavigation } from "../Navigation";
 import { Router } from "./Router";
 import { ILink } from "./types";
 
@@ -67,18 +68,12 @@ export class Link extends HTMLElement implements ILink {
     this._anchorElement = link;
 
     // ロケーション変更を監視
-    (window as any).navigation?.addEventListener(
-      'currententrychange', 
-      this._updateActiveState
-    );
+    getNavigation()?.addEventListener('currententrychange', this._updateActiveState);
     this._updateActiveState();    
   }
 
   disconnectedCallback() {
-    (window as any).navigation?.removeEventListener(
-      'currententrychange', 
-      this._updateActiveState
-    );
+    getNavigation()?.removeEventListener('currententrychange', this._updateActiveState);
     if (this._anchorElement) {
       this._anchorElement.remove();
     }
