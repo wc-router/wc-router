@@ -13,4 +13,6 @@ interface IConfig {
 
 declare const config: IConfig;
 
-export { config };
+declare function registerComponents(): void;
+
+export { config, registerComponents };

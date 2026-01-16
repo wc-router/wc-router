@@ -5,11 +5,9 @@ import { IOutlet, IRoute, IRouter } from "./types.js";
 export class Outlet extends HTMLElement implements IOutlet {
   private _routesNode: IRouter | null = null;
   private _lastRoutes: IRoute[] = [];
+  private _initialized: boolean = false;
   constructor() {
     super();
-    if (config.enableShadowRoot) {
-      this.attachShadow({ mode: 'open' });
-    }
   }
 
   get routesNode(): IRouter {
@@ -36,8 +34,17 @@ export class Outlet extends HTMLElement implements IOutlet {
     this._lastRoutes = [ ...value ];
   }
 
+  private _initialize() {
+    if (config.enableShadowRoot) {
+      this.attachShadow({ mode: 'open' });
+    }
+    this._initialized = true;
+  }
+
   connectedCallback() {
-//    console.log('WcOutlet connectedCallback');
+    if (!this._initialized) {
+      this._initialize();
+    }
   }
 }
 

@@ -41,6 +41,7 @@ export interface IRoute {
   hide(): void;
   shouldChange(newParams: Record<string, string>): boolean;
   guardCheck(matchResult: IRouteMatchResult): Promise<void>;
+  initialize(): void;
 }
 
 export interface IRouter {

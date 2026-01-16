@@ -19,12 +19,9 @@ export async function applyRoute(
     raiseError(`${config.tagNames.router} No route matched for path: ${path}`);
   }
   matchResult.lastPath = lastPath;
-  try {
-    const lastRoutes = outlet.lastRoutes;
-    await showRouteContent(routerNode, matchResult, lastRoutes);
-    // if successful, update router and outlet state
-    routerNode.path = path;
-    outlet.lastRoutes = matchResult.routes;
-  } finally {
-  }
+  const lastRoutes = outlet.lastRoutes;
+  await showRouteContent(routerNode, matchResult, lastRoutes);
+  // if successful, update router and outlet state
+  routerNode.path = path;
+  outlet.lastRoutes = matchResult.routes;
 }

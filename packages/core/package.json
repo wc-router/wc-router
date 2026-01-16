@@ -15,18 +15,26 @@
     "dist"
   ],
   "scripts": {
+    "clean": "powershell -NoProfile -Command \"if (Test-Path dist) { Remove-Item -Recurse -Force dist/* }\"",
     "build": "rollup -c",
     "dev": "rollup -c -w",
+    "lint": "eslint \"src/**/*.{ts,js}\" \"__tests__/**/*.ts\"",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
   },
   "devDependencies": {
     "@rollup/plugin-terser": "^0.4.4",
     "@rollup/plugin-typescript": "^12.1.2",
-    "happy-dom": "^16.6.0",
+    "@typescript-eslint/eslint-plugin": "^8.32.0",
+    "@typescript-eslint/parser": "^8.32.0",
+    "@vitest/coverage-v8": "^4.0.17",
+    "eslint": "^9.29.0",
+    "happy-dom": "^20.3.1",
+    "globals": "^15.11.0",
     "rollup": "^4.29.1",
     "rollup-plugin-dts": "^6.1.1",
     "tslib": "^2.8.1",
-    "vitest": "^2.1.8"
+    "vitest": "^4.0.17"
   }
 }

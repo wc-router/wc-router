@@ -89,40 +89,9 @@ class Route extends HTMLElement {
     _waitForSetGuardHandler = null;
     _resolveSetGuardHandler = null;
     _guardFallbackPath = '';
+    _initialized = false;
     constructor() {
         super();
-        if (this.hasAttribute('path')) {
-            this._path = this.getAttribute('path') || '';
-        }
-        else {
-            if (this.hasAttribute('index')) {
-                this._path = '';
-            }
-            else {
-                raiseError(`${config.tagNames.route} should have a "path" or "index" attribute.`);
-            }
-        }
-        const segments = this._path.split('/');
-        const patternSegments = [];
-        for (const segment of segments) {
-            if (segment.startsWith(':')) {
-                this._paramNames.push(segment.substring(1));
-                patternSegments.push('([^\\/]+)');
-                this._weight += 1;
-            }
-            else {
-                patternSegments.push(segment);
-                this._weight += 2;
-            }
-        }
-        this._patternText = patternSegments.join('\\/');
-        this._hasGuard = this.hasAttribute('guard');
-        if (this._hasGuard) {
-            this._guardFallbackPath = this.getAttribute('guard') || '/';
-            this._waitForSetGuardHandler = new Promise((resolve) => {
-                this._resolveSetGuardHandler = resolve;
-            });
-        }
     }
     get routeParentNode() {
         return this._routeParentNode;
@@ -258,7 +227,7 @@ class Route extends HTMLElement {
         return this._weight;
     }
     get absoluteWeight() {
-        if (this._absoluteWeight >= 0) {
+        if (this._absoluteWeight > 0) {
             return this._absoluteWeight;
         }
         return (this._absoluteWeight = this._checkParentNode((routeParentNode) => {
@@ -342,15 +311,53 @@ class Route extends HTMLElement {
         this._resolveSetGuardHandler?.();
         this._guardHandler = value;
     }
+    initialize() {
+        if (this._initialized) {
+            return;
+        }
+        if (this.hasAttribute('path')) {
+            this._path = this.getAttribute('path') || '';
+        }
+        else {
+            if (this.hasAttribute('index')) {
+                this._path = '';
+            }
+            else {
+                raiseError(`${config.tagNames.route} should have a "path" or "index" attribute.`);
+            }
+        }
+        const segments = this._path.split('/');
+        const patternSegments = [];
+        for (const segment of segments) {
+            if (segment.startsWith(':')) {
+                this._paramNames.push(segment.substring(1));
+                patternSegments.push('([^\\/]+)');
+                this._weight += 1;
+            }
+            else {
+                patternSegments.push(segment);
+                this._weight += 2;
+            }
+        }
+        this._patternText = patternSegments.join('\\/');
+        this._hasGuard = this.hasAttribute('guard');
+        if (this._hasGuard) {
+            this._guardFallbackPath = this.getAttribute('guard') || '/';
+            this._waitForSetGuardHandler = new Promise((resolve) => {
+                this._resolveSetGuardHandler = resolve;
+            });
+        }
+        this._initialized = true;
+    }
 }
 
 const cache = new Map();
 class Layout extends HTMLElement {
     _uuid = getUUID();
     _name = '';
+    _initialized = false;
     constructor() {
         super();
-        this._name = this.getAttribute('name') || '';
     }
     async _loadTemplateFromSource(source) {
         try {
@@ -417,16 +424,23 @@ class Layout extends HTMLElement {
     get name() {
         return this._name;
     }
+    _initialize() {
+        this._name = this.getAttribute('name') || '';
+        this._initialized = true;
+    }
+    connectedCallback() {
+        if (!this._initialized) {
+            this._initialize();
+        }
+    }
 }
 
 class Outlet extends HTMLElement {
     _routesNode = null;
     _lastRoutes = [];
+    _initialized = false;
     constructor() {
         super();
-        if (config.enableShadowRoot) {
-            this.attachShadow({ mode: 'open' });
-        }
     }
     get routesNode() {
         if (!this._routesNode) {
@@ -449,8 +463,16 @@ class Outlet extends HTMLElement {
     set lastRoutes(value) {
         this._lastRoutes = [...value];
     }
+    _initialize() {
+        if (config.enableShadowRoot) {
+            this.attachShadow({ mode: 'open' });
+        }
+        this._initialized = true;
+    }
     connectedCallback() {
-        //    console.log('WcOutlet connectedCallback');
+        if (!this._initialized) {
+            this._initialize();
+        }
     }
 }
 function createOutlet() {
@@ -459,7 +481,7 @@ function createOutlet() {
 
 class LayoutOutlet extends HTMLElement {
     _layout = null;
-    _isInitialized = false;
+    _initialized = false;
     _layoutChildNodes = [];
     constructor() {
         super();
@@ -478,10 +500,7 @@ class LayoutOutlet extends HTMLElement {
         return this.layout.name;
     }
     async _initialize() {
-        if (this._isInitialized) {
-            return;
-        }
-        this._isInitialized = true;
+        this._initialized = true;
         if (this.layout.enableShadowRoot) {
             this.attachShadow({ mode: 'open' });
         }
@@ -535,8 +554,9 @@ class LayoutOutlet extends HTMLElement {
         }
     }
     async connectedCallback() {
-        await this._initialize();
-        //    console.log(`${config.tagNames.layoutOutlet} connectedCallback`);
+        if (!this._initialized) {
+            await this._initialize();
+        }
     }
     assignParams(params) {
         for (const childNode of this._layoutChildNodes) {
@@ -576,6 +596,7 @@ async function _parseNode(routesNode, node, routes, map) {
                 customElements.upgrade(cloneElement);
                 cloneElement.appendChild(childFragment);
                 const route = cloneElement;
+                route.initialize();
                 route.routesNode = routesNode;
                 route.routeParentNode = routeParentNode;
                 route.placeHolder = document.createComment(`@@route:${route.uuid}`);
@@ -613,11 +634,10 @@ async function _parseNode(routesNode, node, routes, map) {
 async function parse(routesNode) {
     const map = new Map();
     const fr = await _parseNode(routesNode, routesNode.template.content, [], map);
-    console.log(fr);
     return fr;
 }
 
-function _matchRoutes(routesNode, routeNode, routes, path, results) {
+function _matchRoutes(routerNode, routeNode, routes, path, results) {
     const nextRoutes = routes.concat(routeNode);
     const matchResult = routeNode.testPath(path);
     if (matchResult) {
@@ -625,15 +645,15 @@ function _matchRoutes(routesNode, routeNode, routes, path, results) {
         return; // Stop searching deeper routes once a match is found
     }
     for (const childRoute of routeNode.routeChildNodes) {
-        _matchRoutes(routesNode, childRoute, nextRoutes, path, results);
+        _matchRoutes(routerNode, childRoute, nextRoutes, path, results);
     }
 }
-function matchRoutes(routesNode, path) {
+function matchRoutes(routerNode, path) {
     const routes = [];
-    const topLevelRoutes = routesNode.routeChildNodes;
+    const topLevelRoutes = routerNode.routeChildNodes;
     const results = [];
     for (const route of topLevelRoutes) {
-        _matchRoutes(routesNode, route, routes, path, results);
+        _matchRoutes(routerNode, route, routes, path, results);
     }
     results.sort((a, b) => {
         const lastRouteA = a.routes.at(-1);
@@ -697,15 +717,11 @@ async function applyRoute(routerNode, outlet, fullPath, lastPath) {
         raiseError(`${config.tagNames.router} No route matched for path: ${path}`);
     }
     matchResult.lastPath = lastPath;
-    try {
-        const lastRoutes = outlet.lastRoutes;
-        await showRouteContent(routerNode, matchResult, lastRoutes);
-        // if successful, update router and outlet state
-        routerNode.path = path;
-        outlet.lastRoutes = matchResult.routes;
-    }
-    finally {
-    }
+    const lastRoutes = outlet.lastRoutes;
+    await showRouteContent(routerNode, matchResult, lastRoutes);
+    // if successful, update router and outlet state
+    routerNode.path = path;
+    outlet.lastRoutes = matchResult.routes;
 }
 
 /**
@@ -720,16 +736,9 @@ class Router extends HTMLElement {
     _routeChildNodes = [];
     _basename = '';
     _path = '';
+    _initialized = false;
     constructor() {
         super();
-        this._basename = this.getAttribute('basename')
-            || this._getBasename()
-            || '';
-        const hasBaseTag = document.querySelector('base[href]') !== null;
-        const url = new URL(window.location.href);
-        if (this._basename === "" && !hasBaseTag && url.pathname !== "/") {
-            raiseError(`${config.tagNames.router} basename is empty, but current path is not "/".`);
-        }
         if (Router._instance) {
             raiseError(`${config.tagNames.router} can only be instantiated once.`);
         }
@@ -827,7 +836,16 @@ class Router extends HTMLElement {
         });
     }
     _onNavigate = this._onNavigateFunc.bind(this);
-    async connectedCallback() {
+    async _initialize() {
+        this._initialized = true;
+        this._basename = this.getAttribute('basename')
+            || this._getBasename()
+            || '';
+        const hasBaseTag = document.querySelector('base[href]') !== null;
+        const url = new URL(window.location.href);
+        if (this._basename === "" && !hasBaseTag && url.pathname !== "/") {
+            raiseError(`${config.tagNames.router} basename is empty, but current path is not "/".`);
+        }
         this._outlet = this._getOutlet();
         this._outlet.routesNode = this;
         this._template = this._getTemplate();
@@ -838,6 +856,11 @@ class Router extends HTMLElement {
         this._outlet.rootNode.appendChild(fragment);
         const path = this._normalizePath(window.location.pathname);
         await applyRoute(this, this.outlet, path, this._path);
+    }
+    async connectedCallback() {
+        if (!this._initialized) {
+            await this._initialize();
+        }
         window.navigation?.addEventListener("navigate", this._onNavigate);
     }
     disconnectedCallback() {
@@ -846,21 +869,15 @@ class Router extends HTMLElement {
 }
 
 class Link extends HTMLElement {
-    _childNodeArray;
+    _childNodeArray = [];
     _uuid = getUUID();
-    _commentNode;
+    _commentNode = document.createComment(`@@link:${this._uuid}`);
     _path = "";
     _router = null;
     _anchorElement = null;
+    _initialized = false;
     constructor() {
         super();
-        this._childNodeArray = Array.from(this.childNodes);
-        this._commentNode = document.createComment(`@@link:${this._uuid}`);
-        this.replaceWith(this._commentNode);
-        this._path = this.getAttribute('to') || '';
-        if (this._path === '') {
-            raiseError(`${config.tagNames.link} requires a 'to' attribute.`);
-        }
     }
     get uuid() {
         return this._uuid;
@@ -878,10 +895,19 @@ class Link extends HTMLElement {
         }
         raiseError(`${config.tagNames.link} is not connected to a router.`);
     }
+    _initialize() {
+        this.replaceWith(this._commentNode); // Link 要素自体は DOM から取り除く
+        this._childNodeArray = Array.from(this.childNodes);
+        this._path = this.getAttribute('to') || '';
+        this._initialized = true;
+    }
     connectedCallback() {
+        if (!this._initialized) {
+            this._initialize();
+        }
         const parentNode = this._commentNode.parentNode;
         if (!parentNode) {
-            raiseError(`${config.tagNames.link} is not connected to the DOM.`);
+            raiseError(`${config.tagNames.link} comment node has no parent`);
         }
         const nextSibling = this._commentNode.nextSibling;
         const link = document.createElement('a');
@@ -950,7 +976,5 @@ function registerComponents() {
     }
 }
 
-registerComponents();
-
-export { config };
+export { config, registerComponents };
 //# sourceMappingURL=index.esm.js.map

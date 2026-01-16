@@ -1,10 +1,8 @@
-import { matchRoutes } from "../matchRoutes.js";
 import { parse } from "../parse.js";
 import { createOutlet, Outlet } from "./Outlet.js";
 import { config } from "../config.js";
 import { raiseError } from "../raiseError.js";
 import { IOutlet, IRoute, IRouter } from "./types.js";
-import { showRouteContent } from "../showRouteContent.js";
 import { applyRoute } from "../applyRoute.js";
 
 /**
@@ -19,16 +17,10 @@ export class Router extends HTMLElement implements IRouter {
   private _routeChildNodes: IRoute[] = [];
   private _basename: string = '';
   private _path: string = '';
+  private _initialized: boolean = false;
+
   constructor() {
     super();
-    this._basename = this.getAttribute('basename') 
-      || this._getBasename() 
-      || '';
-    const hasBaseTag = document.querySelector('base[href]') !== null;
-    const url = new URL(window.location.href);
-    if (this._basename === "" && !hasBaseTag && url.pathname !== "/") {
-      raiseError(`${config.tagNames.router} basename is empty, but current path is not "/".`);
-    }
     if (Router._instance) {
       raiseError(`${config.tagNames.router} can only be instantiated once.`);
     }
@@ -143,7 +135,17 @@ export class Router extends HTMLElement implements IRouter {
 
   private _onNavigate = this._onNavigateFunc.bind(this);
 
-  async connectedCallback() {
+  private async _initialize(): Promise<void> {
+    this._initialized = true;
+    this._basename = this.getAttribute('basename') 
+      || this._getBasename() 
+      || '';
+    const hasBaseTag = document.querySelector('base[href]') !== null;
+    const url = new URL(window.location.href);
+    if (this._basename === "" && !hasBaseTag && url.pathname !== "/") {
+      raiseError(`${config.tagNames.router} basename is empty, but current path is not "/".`);
+    }
+
     this._outlet = this._getOutlet();
     this._outlet.routesNode = this;
     this._template = this._getTemplate();
@@ -152,8 +154,16 @@ export class Router extends HTMLElement implements IRouter {
     }
     const fragment = await parse(this);
     this._outlet.rootNode.appendChild(fragment);
+
     const path = this._normalizePath(window.location.pathname);
     await applyRoute(this, this.outlet, path, this._path);
+
+  }
+
+  async connectedCallback() {
+    if (!this._initialized) {
+      await this._initialize();
+    }
     ((window as any).navigation as any)?.addEventListener("navigate", this._onNavigate);
   }
 

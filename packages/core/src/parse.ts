@@ -28,6 +28,7 @@ async function _parseNode(
         customElements.upgrade(cloneElement);
         cloneElement.appendChild(childFragment);
         const route = cloneElement;
+        route.initialize();
         route.routesNode = routesNode;
         route.routeParentNode = routeParentNode;
         route.placeHolder = document.createComment(`@@route:${route.uuid}`);
@@ -64,6 +65,5 @@ async function _parseNode(
 export async function parse(routesNode: IRouter): Promise<DocumentFragment> {
   const map: Map<string, IRoute | ILayout> = new Map();
   const fr = await _parseNode(routesNode, routesNode.template.content, [], map);
-  console.log(fr);
   return fr;
 }

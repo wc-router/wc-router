@@ -1,7 +1,7 @@
 import { getUUID } from "../getUUID.js";
 import { config } from "../config.js";
 import { raiseError } from "../raiseError.js";
-import { IRouteMatchResult, IRoute, IRouter, BindType, ILayoutOutlet, GuardHandler } from "./types.js";
+import { IRouteMatchResult, IRoute, IRouter, GuardHandler } from "./types.js";
 import { assignParams } from "../assignParams.js";
 import { LayoutOutlet } from "./LayoutOutlet.js";
 import { GuardCancel } from "../GuardCancel.js";
@@ -28,38 +28,10 @@ export class Route extends HTMLElement implements IRoute {
   private _waitForSetGuardHandler: Promise<void> | null = null;
   private _resolveSetGuardHandler: (() => void) | null = null;
   private _guardFallbackPath: string = '';
+  private _initialized: boolean = false;
 
   constructor() {
     super();
-    if (this.hasAttribute('path')) {
-      this._path = this.getAttribute('path') || '';
-    } else {
-      if (this.hasAttribute('index')) {
-        this._path = '';
-      } else {
-        raiseError(`${config.tagNames.route} should have a "path" or "index" attribute.`);
-      }
-    }
-    const segments = this._path.split('/');
-    const patternSegments = [];
-    for (const segment of segments) {
-      if (segment.startsWith(':')) {
-        this._paramNames.push(segment.substring(1));
-        patternSegments.push('([^\\/]+)');
-        this._weight += 1;
-      } else {
-        patternSegments.push(segment);
-        this._weight += 2;
-      }
-    }
-    this._patternText = patternSegments.join('\\/');
-    this._hasGuard = this.hasAttribute('guard');
-    if (this._hasGuard) {
-      this._guardFallbackPath = this.getAttribute('guard') || '/';
-      this._waitForSetGuardHandler = new Promise((resolve) => {
-        this._resolveSetGuardHandler = resolve;
-      });
-    }
   }
 
   get routeParentNode(): IRoute | null {
@@ -217,7 +189,7 @@ export class Route extends HTMLElement implements IRoute {
   }
 
   get absoluteWeight(): number {
-    if (this._absoluteWeight >= 0) {
+    if (this._absoluteWeight > 0) {
       return this._absoluteWeight
     }
     return (this._absoluteWeight = this._checkParentNode<number>((routeParentNode) => {
@@ -306,5 +278,41 @@ export class Route extends HTMLElement implements IRoute {
   set guardHandler(value: GuardHandler) {
     this._resolveSetGuardHandler?.();
     this._guardHandler = value;
+  }
+
+  initialize() {
+    if (this._initialized) {
+      return;
+    }
+    if (this.hasAttribute('path')) {
+      this._path = this.getAttribute('path') || '';
+    } else {
+      if (this.hasAttribute('index')) {
+        this._path = '';
+      } else {
+        raiseError(`${config.tagNames.route} should have a "path" or "index" attribute.`);
+      }
+    }
+    const segments = this._path.split('/');
+    const patternSegments = [];
+    for (const segment of segments) {
+      if (segment.startsWith(':')) {
+        this._paramNames.push(segment.substring(1));
+        patternSegments.push('([^\\/]+)');
+        this._weight += 1;
+      } else {
+        patternSegments.push(segment);
+        this._weight += 2;
+      }
+    }
+    this._patternText = patternSegments.join('\\/');
+    this._hasGuard = this.hasAttribute('guard');
+    if (this._hasGuard) {
+      this._guardFallbackPath = this.getAttribute('guard') || '/';
+      this._waitForSetGuardHandler = new Promise((resolve) => {
+        this._resolveSetGuardHandler = resolve;
+      });
+    }
+    this._initialized = true;
   }
 }

@@ -1,7 +1,7 @@
 import { IRoute, IRouteMatchResult, IRouter } from "./components/types.js";
 
 function _matchRoutes(
-  routesNode: IRouter, 
+  routerNode: IRouter, 
   routeNode: IRoute, 
   routes: IRoute[], 
   path: string,
@@ -14,16 +14,16 @@ function _matchRoutes(
     return; // Stop searching deeper routes once a match is found
   }
   for(const childRoute of routeNode.routeChildNodes) {
-    _matchRoutes(routesNode, childRoute, nextRoutes, path, results);
+    _matchRoutes(routerNode, childRoute, nextRoutes, path, results);
   }
 }
 
-export function matchRoutes(routesNode: IRouter, path: string): IRouteMatchResult | null {
+export function matchRoutes(routerNode: IRouter, path: string): IRouteMatchResult | null {
   const routes: IRoute[] = [];
-  const topLevelRoutes = routesNode.routeChildNodes;
+  const topLevelRoutes = routerNode.routeChildNodes;
   const results: IRouteMatchResult[] = [];
   for (const route of topLevelRoutes) {
-    _matchRoutes(routesNode, route, routes, path, results);
+    _matchRoutes(routerNode, route, routes, path, results);
   }
   results.sort((a, b) => {
     const lastRouteA = a.routes.at(-1)!;

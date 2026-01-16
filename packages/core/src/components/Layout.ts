@@ -8,9 +8,9 @@ const cache = new Map<string, string>();
 export class Layout extends HTMLElement implements ILayout {
   private _uuid: string = getUUID();
   private _name: string = '';
+  private _initialized: boolean = false;
   constructor() {
     super();
-    this._name = this.getAttribute('name') || '';
   }
 
   private async _loadTemplateFromSource(source: string): Promise<string | null> {
@@ -77,5 +77,16 @@ export class Layout extends HTMLElement implements ILayout {
 
   get name(): string {
     return this._name;
+  }
+
+  private _initialize() {
+    this._name = this.getAttribute('name') || '';
+    this._initialized = true;
+  }
+
+  connectedCallback() {
+    if (!this._initialized) {
+      this._initialize();
+    }
   }
 }

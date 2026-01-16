@@ -5,7 +5,7 @@ import { ILayout, ILayoutOutlet } from "./types.js";
 
 export class LayoutOutlet extends HTMLElement implements ILayoutOutlet {
   private _layout: (ILayout & Pick<Element,'childNodes'>) | null = null;
-  private _isInitialized: boolean = false;
+  private _initialized: boolean = false;
   private _layoutChildNodes: Node[] = [];
   constructor() {
     super();
@@ -27,10 +27,7 @@ export class LayoutOutlet extends HTMLElement implements ILayoutOutlet {
   }
 
   private async _initialize(): Promise<void> {
-    if (this._isInitialized) {
-      return;
-    }
-    this._isInitialized = true;
+    this._initialized = true;
     if (this.layout.enableShadowRoot) {
       this.attachShadow({ mode: 'open' });
     }
@@ -85,8 +82,9 @@ export class LayoutOutlet extends HTMLElement implements ILayoutOutlet {
   } 
 
   async connectedCallback() {
-    await this._initialize();
-//    console.log(`${config.tagNames.layoutOutlet} connectedCallback`);
+    if (!this._initialized) {
+      await this._initialize();
+    }
   }
 
   assignParams(params: Record<string, string>): void {

@@ -5,21 +5,16 @@ import { Router } from "./Router";
 import { ILink } from "./types";
 
 export class Link extends HTMLElement implements ILink {
-  private _childNodeArray: Node[];
+  private _childNodeArray: Node[] = [];
   private _uuid: string = getUUID();
-  private _commentNode: Comment;
+  private _commentNode: Comment = document.createComment(`@@link:${this._uuid}`);
   private _path: string = "";
   private _router: Router | null = null;
   private _anchorElement: HTMLAnchorElement | null = null;
+  private _initialized: boolean = false;
+
   constructor() {
     super();
-    this._childNodeArray = Array.from(this.childNodes);
-    this._commentNode = document.createComment(`@@link:${this._uuid}`);
-    this.replaceWith(this._commentNode);
-    this._path = this.getAttribute('to') || '';
-    if (this._path === '') {
-      raiseError(`${config.tagNames.link} requires a 'to' attribute.`);
-    }
   }
 
   get uuid(): string {
@@ -39,15 +34,25 @@ export class Link extends HTMLElement implements ILink {
     raiseError(`${config.tagNames.link} is not connected to a router.`);
   }
 
+  private _initialize() {
+    this.replaceWith(this._commentNode); // Link 要素自体は DOM から取り除く
+    this._childNodeArray = Array.from(this.childNodes);
+    this._path = this.getAttribute('to') || '';
+    this._initialized = true;
+  }
+
   connectedCallback() {
+    if (!this._initialized) {
+      this._initialize();
+    }
     const parentNode = this._commentNode.parentNode;
     if (!parentNode) {
-      raiseError(`${config.tagNames.link} is not connected to the DOM.`);
+      raiseError(`${config.tagNames.link} comment node has no parent`);
     }
     const nextSibling = this._commentNode.nextSibling;
     const link = document.createElement('a');
     if (this._path.startsWith('/')) {
-      link.href = this.router.basename +this._path;
+      link.href = this.router.basename + this._path;
     } else {
       link.href = new URL(this._path).toString();
     }
