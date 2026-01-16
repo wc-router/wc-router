@@ -18,6 +18,7 @@ export class Router extends HTMLElement implements IRouter {
   private _template: HTMLTemplateElement | null = null;
   private _routeChildNodes: IRoute[] = [];
   private _basename: string = '';
+  private _path: string = '';
   constructor() {
     super();
     this._basename = this.getAttribute('basename') 
@@ -103,13 +104,23 @@ export class Router extends HTMLElement implements IRouter {
     return this._routeChildNodes;
   }
 
+  get path(): string {
+    return this._path;
+  }
+  /**
+   * applyRoute 内で設定される値です。
+   */
+  set path(value: string) {
+    this._path = value;
+  }
+
   async navigate(path: string): Promise<void> {
     const fullPath = this._basename + path;
     if ((window as any).navigation) {
       (window as any).navigation.navigate(fullPath);
     } else {
       history.pushState(null, '', fullPath);
-      await applyRoute(this, this.outlet, fullPath);
+      await applyRoute(this, this.outlet, fullPath, this._path);
     }
   }
 
@@ -125,7 +136,7 @@ export class Router extends HTMLElement implements IRouter {
     navEvent.intercept({
       async handler() {
         const url = new URL(navEvent.destination.url);
-        await applyRoute(routesNode, routesNode.outlet, url.pathname);
+        await applyRoute(routesNode, routesNode.outlet, url.pathname, this._path);
       }
     });
   }
@@ -142,7 +153,7 @@ export class Router extends HTMLElement implements IRouter {
     const fragment = await parse(this);
     this._outlet.rootNode.appendChild(fragment);
     const path = this._normalizePath(window.location.pathname);
-    await applyRoute(this, this.outlet, path);
+    await applyRoute(this, this.outlet, path, this._path);
     ((window as any).navigation as any)?.addEventListener("navigate", this._onNavigate);
   }
 

@@ -2,6 +2,8 @@
 export interface IRouteMatchResult {
   routes: IRoute[];
   params: Record<string, string>;
+  path: string;
+  lastPath: string;
 }
 
 export type GuardHandler = (toPath: string, fromPath: string) => boolean | Promise<boolean>;
@@ -35,9 +37,10 @@ export interface IRoute {
   readonly absoluteWeight: number;
   readonly childIndex: number;
   guardHandler: GuardHandler;
-  show(params: Record<string, string>): Promise<boolean>;
+  show(params: Record<string, string>): boolean;
   hide(): void;
   shouldChange(newParams: Record<string, string>): boolean;
+  guardCheck(matchResult: IRouteMatchResult): Promise<void>;
 }
 
 export interface IRouter {
@@ -45,6 +48,7 @@ export interface IRouter {
   readonly outlet: IOutlet;
   readonly template: HTMLTemplateElement;
   readonly routeChildNodes: IRoute[];
+  path: string;
   navigate(path: string): Promise<void>;
 }
 

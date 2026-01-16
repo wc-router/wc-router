@@ -12,3 +12,7 @@ export interface IConfig {
   tagNames: ITagNames;
   enableShadowRoot: boolean;
 }
+
+export interface IGuardCancel {
+  fallbackPath: string;
+}

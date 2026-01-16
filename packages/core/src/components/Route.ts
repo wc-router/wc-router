@@ -4,6 +4,7 @@ import { raiseError } from "../raiseError.js";
 import { IRouteMatchResult, IRoute, IRouter, BindType, ILayoutOutlet, GuardHandler } from "./types.js";
 import { assignParams } from "../assignParams.js";
 import { LayoutOutlet } from "./LayoutOutlet.js";
+import { GuardCancel } from "../GuardCancel.js";
 
 export class Route extends HTMLElement implements IRoute {
   private _name: string = '';
@@ -164,8 +165,10 @@ export class Route extends HTMLElement implements IRoute {
         params[paramName] = testResult[index + 1];
       });
       return {
+        path: path,
         routes: this.routes,
-        params: params
+        params: params,
+        lastPath: ""
       };
     }
     return null;
@@ -232,22 +235,21 @@ export class Route extends HTMLElement implements IRoute {
     return this._name;
   }
 
-  async show(params: Record<string, string>): Promise<boolean> {
+  async guardCheck(matchResult: IRouteMatchResult): Promise<void> {
     if (this._hasGuard && this._waitForSetGuardHandler) {
       await this._waitForSetGuardHandler;
     }
     if (this._guardHandler) {
-      const toPath = ""; // ToDO: set toPath
-      const fromPath = ""; // ToDO: set fromPath
+      const toPath = matchResult.path;
+      const fromPath = matchResult.lastPath;
       const allowed = await this._guardHandler(toPath, fromPath);
       if (!allowed) {
-        queueMicrotask(() => {
-          this.routesNode.navigate(this._guardFallbackPath);
-        });
-        return false;
+        throw new GuardCancel('Navigation cancelled by guard.', this._guardFallbackPath);
       }
     }
+  }
 
+  show(params: Record<string, string>): boolean {
     this._params = {};
     for(const key of this._paramNames) {
       this._params[key] = params[key];

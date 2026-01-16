@@ -59,6 +59,14 @@ function assignParams(element, params) {
     }
 }
 
+class GuardCancel extends Error {
+    fallbackPath;
+    constructor(message, fallbackPath) {
+        super(message);
+        this.fallbackPath = fallbackPath;
+    }
+}
+
 class Route extends HTMLElement {
     _name = '';
     _path = '';
@@ -204,8 +212,10 @@ class Route extends HTMLElement {
                 params[paramName] = testResult[index + 1];
             });
             return {
+                path: path,
                 routes: this.routes,
-                params: params
+                params: params,
+                lastPath: ""
             };
         }
         return null;
@@ -263,21 +273,20 @@ class Route extends HTMLElement {
     get name() {
         return this._name;
     }
-    async show(params) {
+    async guardCheck(matchResult) {
         if (this._hasGuard && this._waitForSetGuardHandler) {
             await this._waitForSetGuardHandler;
         }
         if (this._guardHandler) {
-            const toPath = ""; // ToDO: set toPath
-            const fromPath = ""; // ToDO: set fromPath
+            const toPath = matchResult.path;
+            const fromPath = matchResult.lastPath;
             const allowed = await this._guardHandler(toPath, fromPath);
             if (!allowed) {
-                queueMicrotask(() => {
-                    this.routesNode.navigate(this._guardFallbackPath);
-                });
-                return false;
+                throw new GuardCancel('Navigation cancelled by guard.', this._guardFallbackPath);
             }
         }
+    }
+    show(params) {
         this._params = {};
         for (const key of this._paramNames) {
             this._params[key] = params[key];
@@ -642,24 +651,43 @@ function matchRoutes(routesNode, path) {
     return null;
 }
 
-async function showRouteContent(routes, lastRoutes, params) {
+async function showRouteContent(routerNode, matchResult, lastRoutes) {
     // Hide previous routes
-    const routesSet = new Set(routes);
+    const routesSet = new Set(matchResult.routes);
     for (const route of lastRoutes) {
         if (!routesSet.has(route)) {
             route.hide();
         }
     }
+    try {
+        for (const route of matchResult.routes) {
+            await route.guardCheck(matchResult);
+        }
+    }
+    catch (e) {
+        const err = e;
+        if ("fallbackPath" in err) {
+            const guardCancel = err;
+            console.warn(`Navigation cancelled: ${err.message}. Redirecting to ${guardCancel.fallbackPath}`);
+            queueMicrotask(() => {
+                routerNode.navigate(guardCancel.fallbackPath);
+            });
+            return;
+        }
+        else {
+            throw e;
+        }
+    }
     const lastRouteSet = new Set(lastRoutes);
     let force = false;
-    for (const route of routes) {
-        if (!lastRouteSet.has(route) || route.shouldChange(params) || force) {
-            force = await route.show(params);
+    for (const route of matchResult.routes) {
+        if (!lastRouteSet.has(route) || route.shouldChange(matchResult.params) || force) {
+            force = route.show(matchResult.params);
         }
     }
 }
 
-async function applyRoute(routerNode, outlet, fullPath) {
+async function applyRoute(routerNode, outlet, fullPath, lastPath) {
     const basename = routerNode.basename;
     const path = fullPath.startsWith(basename)
         ? fullPath.slice(basename.length)
@@ -668,12 +696,15 @@ async function applyRoute(routerNode, outlet, fullPath) {
     if (!matchResult) {
         raiseError(`${config.tagNames.router} No route matched for path: ${path}`);
     }
+    matchResult.lastPath = lastPath;
     try {
         const lastRoutes = outlet.lastRoutes;
-        await showRouteContent(matchResult.routes, lastRoutes, matchResult.params);
+        await showRouteContent(routerNode, matchResult, lastRoutes);
+        // if successful, update router and outlet state
+        routerNode.path = path;
+        outlet.lastRoutes = matchResult.routes;
     }
     finally {
-        outlet.lastRoutes = matchResult.routes;
     }
 }
 
@@ -688,6 +719,7 @@ class Router extends HTMLElement {
     _template = null;
     _routeChildNodes = [];
     _basename = '';
+    _path = '';
     constructor() {
         super();
         this._basename = this.getAttribute('basename')
@@ -761,6 +793,15 @@ class Router extends HTMLElement {
     get routeChildNodes() {
         return this._routeChildNodes;
     }
+    get path() {
+        return this._path;
+    }
+    /**
+     * applyRoute 内で設定される値です。
+     */
+    set path(value) {
+        this._path = value;
+    }
     async navigate(path) {
         const fullPath = this._basename + path;
         if (window.navigation) {
@@ -768,7 +809,7 @@ class Router extends HTMLElement {
         }
         else {
             history.pushState(null, '', fullPath);
-            await applyRoute(this, this.outlet, fullPath);
+            await applyRoute(this, this.outlet, fullPath, this._path);
         }
     }
     _onNavigateFunc(navEvent) {
@@ -781,7 +822,7 @@ class Router extends HTMLElement {
         navEvent.intercept({
             async handler() {
                 const url = new URL(navEvent.destination.url);
-                await applyRoute(routesNode, routesNode.outlet, url.pathname);
+                await applyRoute(routesNode, routesNode.outlet, url.pathname, this._path);
             }
         });
     }
@@ -796,7 +837,7 @@ class Router extends HTMLElement {
         const fragment = await parse(this);
         this._outlet.rootNode.appendChild(fragment);
         const path = this._normalizePath(window.location.pathname);
-        await applyRoute(this, this.outlet, path);
+        await applyRoute(this, this.outlet, path, this._path);
         window.navigation?.addEventListener("navigate", this._onNavigate);
     }
     disconnectedCallback() {
